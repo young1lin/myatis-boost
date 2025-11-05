@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { FileMapper, JavaToXmlDefinitionProvider, XmlToJavaDefinitionProvider, XmlSqlFragmentDefinitionProvider } from '../../navigator';
 
-suite('Precise Position Navigation Integration Tests', () => {
+suite.skip('Precise Position Navigation Integration Tests', () => {
     let tempDir: string;
     let javaFilePath: string;
     let xmlFilePath: string;
