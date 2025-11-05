@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.mapper.UserMapper">
+
+    <!-- Result map for User -->
+    <resultMap id="UserResultMap" type="com.example.mapper.User">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="age" column="age"/>
+        <result property="email" column="email"/>
+    </resultMap>
+
+    <!-- SQL fragment for base columns -->
+    <sql id="BaseColumns">
+        id, name, age, email
+    </sql>
+
+    <!-- Select user by ID -->
+    <select id="selectById" resultMap="UserResultMap" parameterType="java.lang.Long">
+        SELECT
+            <include refid="BaseColumns"/>
+        FROM users
+        WHERE id = #{id}
+    </select>
+
+    <!-- Select all users -->
+    <select id="selectAll" resultMap="UserResultMap">
+        SELECT
+            <include refid="BaseColumns"/>
+        FROM users
+        ORDER BY id
+    </select>
+
+    <!-- Select users by age -->
+    <select id="selectByAge" resultMap="UserResultMap" parameterType="int">
+        SELECT
+            <include refid="BaseColumns"/>
+        FROM users
+        WHERE age = #{age}
+        ORDER BY id
+    </select>
+
+    <!-- Insert a new user -->
+    <insert id="insert" parameterType="com.example.mapper.User">
+        INSERT INTO users (name, age, email)
+        VALUES (#{name}, #{age}, #{email})
+    </insert>
+
+    <!-- Update user information -->
+    <update id="update" parameterType="com.example.mapper.User">
+        UPDATE users
+        SET name = #{name},
+            age = #{age},
+            email = #{email}
+        WHERE id = #{id}
+    </update>
+
+    <!-- Delete user by ID -->
+    <delete id="delete" parameterType="java.lang.Long">
+        DELETE FROM users
+        WHERE id = #{id}
+    </delete>
+
+    <!-- Count all users -->
+    <select id="count" resultType="int">
+        SELECT COUNT(*)
+        FROM users
+    </select>
+
+</mapper>

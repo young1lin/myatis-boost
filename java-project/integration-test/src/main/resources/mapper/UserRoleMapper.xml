@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.young1lin.mybatis.boost.integration.test.mapper.UserRoleMapper">
+
+    <resultMap id="UserRoleResultMap" type="com.young1lin.mybatis.boost.integration.test.domain.UserRole">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="roleId" column="role_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="version" column="version"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id, user_id, role_id, create_time, update_time, version
+    </sql>
+
+    <select id="listAllByUserId" resultMap="UserRoleResultMap" parameterType="long">
+        SELECT <include refid="BaseColumns" /> FROM `user_role` WHERE user_id = #{userId}
+    </select>
+
+</mapper>

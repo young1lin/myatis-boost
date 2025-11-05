@@ -1,0 +1,108 @@
+{
+  "name": "mybatis-boost",
+  "displayName": "MyBatis Boost",
+  "description": "High-performance bidirectional navigation between MyBatis mapper interfaces and XML files with sub-100ms latency",
+  "version": "0.0.1",
+  "publisher": "mybatis-boost",
+  "license": "MIT",
+  "icon": "images/icons/MyBatis-Navigator.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/young1lin/mybatis-boost.git"
+  },
+  "engines": {
+    "vscode": "^1.99.3"
+  },
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "mybatis",
+    "mapper",
+    "xml",
+    "java",
+    "navigation",
+    "sql",
+    "database"
+  ],
+  "activationEvents": [
+    "workspaceContains:**/pom.xml",
+    "workspaceContains:**/build.gradle",
+    "workspaceContains:**/*.java"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mybatis-boost.clearCache",
+        "title": "Clear Cache and Rebuild",
+        "category": "MyBatis Boost"
+      },
+      {
+        "command": "mybatis-boost.refreshMappings",
+        "title": "Refresh Mappings",
+        "category": "MyBatis Boost"
+      }
+    ],
+    "configuration": {
+      "title": "MyBatis Boost",
+      "properties": {
+        "mybatis-boost.cacheSize": {
+          "type": "number",
+          "default": 5000,
+          "description": "Maximum number of mapper file pairs to cache in memory (LRU cache size)"
+        },
+        "mybatis-boost.customXmlDirectories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Custom directories to search for XML mapper files, relative to workspace root"
+        },
+        "mybatis-boost.javaParseLines": {
+          "type": "number",
+          "default": 100,
+          "minimum": 20,
+          "maximum": 200,
+          "description": "Number of lines to read from Java files for namespace extraction"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "pnpm run package",
+    "compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "pnpm run check-types && pnpm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "pnpm run test:unit && pnpm run test:integration",
+    "test:unit": "pnpm exec mocha",
+    "test:integration": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/sinon": "^17.0.3",
+    "@types/vscode": "^1.99.3",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.2",
+    "esbuild": "^0.25.10",
+    "eslint": "^9.36.0",
+    "mocha": "^10.8.2",
+    "npm-run-all": "^4.1.5",
+    "sinon": "^19.0.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

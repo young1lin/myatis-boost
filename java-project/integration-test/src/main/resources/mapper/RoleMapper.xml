@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.young1lin.mybatis.boost.integration.test.mapper.RoleMapper">
+
+    <resultMap id="RoleResultMap" type="com.young1lin.mybatis.boost.integration.test.domain.Role">
+        <id property="id" column="id"/>
+        <result property="roleName" column="role_name"/>
+        <result property="remark" column="remark"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="version" column="version"/>
+    </resultMap>
+
+    <sql id="BaseColumns">
+        id, role_name, remark, create_time, update_time, version
+    </sql>
+
+    <select id="listAll" resultMap="RoleResultMap">
+        SELECT <include refid="BaseColumns" /> FROM `role`
+    </select>
+
+    <select id="getById" resultMap="RoleResultMap">
+        SELECT <include refid="BaseColumns" /> FROM `role` WHERE id = #{id}
+    </select>
+
+    <update id="updateById" parameterType="com.young1lin.mybatis.boost.integration.test.domain.Role">
+        UPDATE `role`
+        SET role_name = #{roleName},
+            remark = #{remark},
+            update_time = #{updateTime},
+            version = version + 1
+        WHERE id = #{id}
+            AND version = #{version}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM `role` WHERE id = #{id} AND version = #{version}
+    </delete>
+
+</mapper>
