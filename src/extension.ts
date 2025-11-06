@@ -189,36 +189,37 @@ function registerCommands(context: vscode.ExtensionContext) {
         })
     );
 
-    // Go to XML Mapper command (used by CodeLens)
+    // Jump to XML command (used by CodeLens)
+    // Automatically detects whether to jump to mapper namespace or statement
     context.subscriptions.push(
-        vscode.commands.registerCommand('mybatis-boost.goToXmlMapper', async (javaUri: vscode.Uri, xmlPath: string) => {
-            const { findXmlMapperPosition } = await import('./navigator/parsers/xmlParser.js');
-            const position = await findXmlMapperPosition(xmlPath);
+        vscode.commands.registerCommand('mybatis-boost.jumpToXml', async (javaUri: vscode.Uri, xmlPath: string, methodName?: string) => {
+            const { findXmlMapperPosition, findXmlStatementPosition } = await import('./navigator/parsers/xmlParser.js');
 
-            if (position) {
-                const xmlUri = vscode.Uri.file(xmlPath);
-                const vscodePosition = new vscode.Position(position.line, position.column);
-                await vscode.window.showTextDocument(xmlUri, { selection: new vscode.Range(vscodePosition, vscodePosition) });
+            // If methodName is provided, jump to statement; otherwise jump to mapper
+            if (methodName) {
+                // Jump to XML statement
+                const statementPosition = await findXmlStatementPosition(xmlPath, methodName);
+
+                if (statementPosition) {
+                    const xmlUri = vscode.Uri.file(xmlPath);
+                    const position = new vscode.Position(statementPosition.line, statementPosition.startColumn);
+                    await vscode.window.showTextDocument(xmlUri, { selection: new vscode.Range(position, position) });
+                } else {
+                    vscode.window.showWarningMessage(`MyBatis statement "${methodName}" not found in XML`);
+                }
             } else {
-                // Fallback: open at first line
-                const xmlUri = vscode.Uri.file(xmlPath);
-                await vscode.window.showTextDocument(xmlUri);
-            }
-        })
-    );
+                // Jump to XML mapper namespace
+                const position = await findXmlMapperPosition(xmlPath);
 
-    // Go to XML Statement command (used by CodeLens)
-    context.subscriptions.push(
-        vscode.commands.registerCommand('mybatis-boost.goToXmlStatement', async (javaUri: vscode.Uri, xmlPath: string, methodName: string) => {
-            const { findXmlStatementPosition } = await import('./navigator/parsers/xmlParser.js');
-            const statementPosition = await findXmlStatementPosition(xmlPath, methodName);
-
-            if (statementPosition) {
-                const xmlUri = vscode.Uri.file(xmlPath);
-                const position = new vscode.Position(statementPosition.line, statementPosition.startColumn);
-                await vscode.window.showTextDocument(xmlUri, { selection: new vscode.Range(position, position) });
-            } else {
-                vscode.window.showWarningMessage(`MyBatis statement "${methodName}" not found in XML`);
+                if (position) {
+                    const xmlUri = vscode.Uri.file(xmlPath);
+                    const vscodePosition = new vscode.Position(position.line, position.column);
+                    await vscode.window.showTextDocument(xmlUri, { selection: new vscode.Range(vscodePosition, vscodePosition) });
+                } else {
+                    // Fallback: open at first line
+                    const xmlUri = vscode.Uri.file(xmlPath);
+                    await vscode.window.showTextDocument(xmlUri);
+                }
             }
         })
     );

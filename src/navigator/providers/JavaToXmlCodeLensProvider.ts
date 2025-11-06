@@ -58,8 +58,8 @@ export class JavaToXmlCodeLensProvider implements vscode.CodeLensProvider {
 
                 // Create CodeLens for interface
                 codeLenses.push(new vscode.CodeLens(range, {
-                    title: '↗ Go to MyBatis XML Mapper',
-                    command: 'mybatis-boost.goToXmlMapper',
+                    title: 'jumpToXml',
+                    command: 'mybatis-boost.jumpToXml',
                     arguments: [document.uri, xmlPath]
                 }));
                 continue;
@@ -145,8 +145,8 @@ export class JavaToXmlCodeLensProvider implements vscode.CodeLensProvider {
 
                     // Create CodeLens for method
                     codeLenses.push(new vscode.CodeLens(range, {
-                        title: '↗ Go to MyBatis XML Statement',
-                        command: 'mybatis-boost.goToXmlStatement',
+                        title: 'jumpToXml',
+                        command: 'mybatis-boost.jumpToXml',
                         arguments: [document.uri, xmlPath, methodName]
                     }));
                 }

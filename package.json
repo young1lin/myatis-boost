@@ -45,12 +45,8 @@
         "category": "MyBatis Boost"
       },
       {
-        "command": "mybatis-boost.goToXmlMapper",
-        "title": "Go to MyBatis XML Mapper"
-      },
-      {
-        "command": "mybatis-boost.goToXmlStatement",
-        "title": "Go to MyBatis XML Statement"
+        "command": "mybatis-boost.jumpToXml",
+        "title": "Jump to MyBatis XML"
       }
     ],
     "configuration": {
