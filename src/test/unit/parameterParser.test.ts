@@ -99,6 +99,96 @@ describe('parameterParser Unit Tests', () => {
             assert.strictEqual(result[0].name, 'user');
             assert.strictEqual(result[1].name, 'user');
         });
+
+        it('should extract parameters with jdbcType attribute', async () => {
+            const mockContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.UserMapper">
+    <insert id="insert" parameterType="com.example.User">
+        INSERT INTO users (id, name, email, age)
+        VALUES (#{id,jdbcType=BIGINT}, #{name,jdbcType=VARCHAR}, #{email,jdbcType=VARCHAR}, #{age,jdbcType=INTEGER})
+    </insert>
+</mapper>`;
+            readFileStub.resolves(mockContent);
+
+            const statement = { id: 'insert', type: 'insert' as const, line: 2, startColumn: 0, endColumn: 0 };
+            const result = await extractParameterReferences('/fake/path.xml', statement);
+
+            assert.strictEqual(result.length, 4);
+            assert.strictEqual(result[0].name, 'id');
+            assert.strictEqual(result[1].name, 'name');
+            assert.strictEqual(result[2].name, 'email');
+            assert.strictEqual(result[3].name, 'age');
+        });
+
+        it('should extract parameters with multiple MyBatis attributes', async () => {
+            const mockContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.UserMapper">
+    <update id="update" parameterType="com.example.User">
+        UPDATE users
+        SET name = #{name,jdbcType=VARCHAR,javaType=string},
+            data = #{data,jdbcType=BLOB,typeHandler=MyBlobHandler}
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+</mapper>`;
+            readFileStub.resolves(mockContent);
+
+            const statement = { id: 'update', type: 'update' as const, line: 2, startColumn: 0, endColumn: 0 };
+            const result = await extractParameterReferences('/fake/path.xml', statement);
+
+            assert.strictEqual(result.length, 3);
+            assert.strictEqual(result[0].name, 'name');
+            assert.strictEqual(result[1].name, 'data');
+            assert.strictEqual(result[2].name, 'id');
+        });
+
+        it('should extract parameters with nested properties and jdbcType', async () => {
+            const mockContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.UserMapper">
+    <insert id="insert" parameterType="com.example.Order">
+        INSERT INTO orders (user_id, product_id, amount)
+        VALUES (#{user.id,jdbcType=BIGINT}, #{product.id,jdbcType=BIGINT}, #{amount,jdbcType=DECIMAL})
+    </insert>
+</mapper>`;
+            readFileStub.resolves(mockContent);
+
+            const statement = { id: 'insert', type: 'insert' as const, line: 2, startColumn: 0, endColumn: 0 };
+            const result = await extractParameterReferences('/fake/path.xml', statement);
+
+            assert.strictEqual(result.length, 3);
+            assert.strictEqual(result[0].name, 'user'); // Root property
+            assert.strictEqual(result[1].name, 'product'); // Root property
+            assert.strictEqual(result[2].name, 'amount');
+        });
+
+        it('should handle real-world complex insert with selectKey', async () => {
+            const mockContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.AccountMapper">
+    <insert id="insert" parameterType="com.zx.atrader.dal.po.AccountSymbolCfgPO">
+        <selectKey keyProperty="id" order="AFTER" resultType="java.lang.Long">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        insert into t_bo_account_symbol_cfg (account_cfg_id, symbol_cfg_id, profit,
+        gmt_create, gmt_modified, create_by,
+        modify_by)
+        values (#{accountCfgId,jdbcType=BIGINT}, #{symbolCfgId,jdbcType=BIGINT}, #{profit,jdbcType=DECIMAL},
+        #{gmtCreate,jdbcType=TIMESTAMP}, #{gmtModified,jdbcType=TIMESTAMP}, #{createBy,jdbcType=VARCHAR},
+        #{modifyBy,jdbcType=VARCHAR})
+    </insert>
+</mapper>`;
+            readFileStub.resolves(mockContent);
+
+            const statement = { id: 'insert', type: 'insert' as const, line: 2, startColumn: 0, endColumn: 0 };
+            const result = await extractParameterReferences('/fake/path.xml', statement);
+
+            assert.strictEqual(result.length, 7);
+            assert.strictEqual(result[0].name, 'accountCfgId');
+            assert.strictEqual(result[1].name, 'symbolCfgId');
+            assert.strictEqual(result[2].name, 'profit');
+            assert.strictEqual(result[3].name, 'gmtCreate');
+            assert.strictEqual(result[4].name, 'gmtModified');
+            assert.strictEqual(result[5].name, 'createBy');
+            assert.strictEqual(result[6].name, 'modifyBy');
+        });
     });
 
     describe('extractStatementParameterInfo', () => {
@@ -184,6 +274,47 @@ describe('parameterParser Unit Tests', () => {
 
             assert.ok(result !== null);
             assert.strictEqual(result.name, 'user'); // Root property
+        });
+
+        it('should handle parameters with jdbcType attribute', () => {
+            const line = '        VALUES (#{id,jdbcType=BIGINT}, #{name,jdbcType=VARCHAR})';
+            const resultId = getParameterAtPosition(line, 18); // Position within #{id,jdbcType=BIGINT}
+            const resultName = getParameterAtPosition(line, 44); // Position within #{name,jdbcType=VARCHAR}
+
+            assert.ok(resultId !== null);
+            assert.strictEqual(resultId.name, 'id');
+            assert.strictEqual(resultId.type, 'prepared');
+
+            assert.ok(resultName !== null);
+            assert.strictEqual(resultName.name, 'name');
+            assert.strictEqual(resultName.type, 'prepared');
+        });
+
+        it('should handle parameters with multiple MyBatis attributes', () => {
+            const line = '        SET data = #{data,jdbcType=BLOB,typeHandler=MyBlobHandler}';
+            const result = getParameterAtPosition(line, 25); // Position within the parameter
+
+            assert.ok(result !== null);
+            assert.strictEqual(result.name, 'data');
+            assert.strictEqual(result.type, 'prepared');
+        });
+
+        it('should handle nested properties with jdbcType', () => {
+            const line = '        VALUES (#{user.id,jdbcType=BIGINT})';
+            const result = getParameterAtPosition(line, 20); // Position within #{user.id,jdbcType=BIGINT}
+
+            assert.ok(result !== null);
+            assert.strictEqual(result.name, 'user'); // Root property
+            assert.strictEqual(result.type, 'prepared');
+        });
+
+        it('should handle substitution parameters with jdbcType', () => {
+            const line = '        ORDER BY ${column,jdbcType=VARCHAR}';
+            const result = getParameterAtPosition(line, 20); // Position within ${column,jdbcType=VARCHAR}
+
+            assert.ok(result !== null);
+            assert.strictEqual(result.name, 'column');
+            assert.strictEqual(result.type, 'substitution');
         });
     });
 });
