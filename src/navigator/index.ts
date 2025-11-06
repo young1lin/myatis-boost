@@ -17,10 +17,6 @@ export { XmlParameterDefinitionProvider } from './providers/XmlParameterDefiniti
 // Export CodeLens providers
 export { JavaToXmlCodeLensProvider } from './providers/JavaToXmlCodeLensProvider';
 
-// Export Hover providers
-export { XmlSqlHoverProvider } from './providers/XmlSqlHoverProvider';
-export { JavaSqlHoverProvider } from './providers/JavaSqlHoverProvider';
-
 // Export diagnostics
 export { ParameterValidator } from './diagnostics/ParameterValidator';
 

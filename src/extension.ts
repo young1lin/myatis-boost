@@ -16,10 +16,9 @@ import {
     XmlResultMapPropertyDefinitionProvider,
     XmlResultMapDefinitionProvider,
     XmlParameterDefinitionProvider,
-    ParameterValidator,
-    XmlSqlHoverProvider,
-    JavaSqlHoverProvider
+    ParameterValidator
 } from './navigator';
+import { XmlSqlHoverProvider, JavaSqlHoverProvider } from './hover';
 import { MybatisBindingDecorator } from './decorator';
 
 let fileMapper: FileMapper;

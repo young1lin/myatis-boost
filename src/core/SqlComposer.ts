@@ -2,7 +2,7 @@
  * SQL Composer - Composes complete SQL by resolving <include> references
  */
 
-import { readFile } from '../../utils/fileUtils';
+import { readFile } from '../utils/fileUtils';
 
 /**
  * SQL Fragment definition

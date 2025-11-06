@@ -4,9 +4,9 @@
  */
 
 import * as vscode from 'vscode';
-import { FileMapper } from '../core/FileMapper';
+import { FileMapper } from '../navigator/core/FileMapper';
 import { composeSql } from '../core/SqlComposer';
-import { extractJavaMethods } from '../parsers/javaParser';
+import { extractJavaMethods } from '../navigator/parsers/javaParser';
 
 /**
  * Provides hover information for mapper methods in Java files

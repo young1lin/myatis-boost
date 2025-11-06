@@ -5,8 +5,8 @@
 
 import * as assert from 'assert';
 import * as sinon from 'sinon';
-import { composeSql, hasIncludes } from '../../navigator/core/SqlComposer';
-import * as fileUtils from '../../utils/fileUtils';
+import { composeSql, hasIncludes } from '../../../core/SqlComposer';
+import * as fileUtils from '../../../utils/fileUtils';
 
 describe('SqlComposer Unit Tests', () => {
     let readFileStub: sinon.SinonStub;
