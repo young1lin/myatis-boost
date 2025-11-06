@@ -88,6 +88,34 @@ export class XmlParameterDefinitionProvider implements vscode.DefinitionProvider
             }
         }
 
+        // MyBatis 3.x+ single object parameter auto-mapping
+        // If there's only one parameter without @Param annotation, and it's not a primitive type,
+        // MyBatis will automatically map the object's fields
+        if (methodParams.length === 1 && !methodParams[0].hasParamAnnotation) {
+            const singleParam = methodParams[0];
+            const paramType = singleParam.paramType;
+
+            console.log(`[XmlParameterDefinitionProvider] Checking single parameter auto-mapping for ${singleParam.name} (${paramType})`);
+
+            // Check if it's not a built-in type (primitives, String, Integer, etc.)
+            if (!this.isBuiltInType(paramType) && !this.isCollectionType(paramType)) {
+                try {
+                    // Try to get the fully qualified class name from the Java file
+                    const fullyQualifiedType = await this.resolveFullyQualifiedType(javaPath, paramType);
+
+                    if (fullyQualifiedType) {
+                        console.log(`[XmlParameterDefinitionProvider] Auto-mapping enabled for ${fullyQualifiedType}`);
+                        const location = await this.findJavaFieldInClass(fullyQualifiedType, paramMatch.name);
+                        if (location) {
+                            return location;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`[XmlParameterDefinitionProvider] Error with auto-mapping:`, error);
+                }
+            }
+        }
+
         console.log(`[XmlParameterDefinitionProvider] Parameter ${paramMatch.name} not found in any source`);
         return null;
     }
@@ -148,6 +176,16 @@ export class XmlParameterDefinitionProvider implements vscode.DefinitionProvider
     private isBuiltInType(className: string): boolean {
         const primitives = ['int', 'long', 'double', 'float', 'boolean', 'byte', 'short', 'char'];
         const javaLang = [
+            'String',
+            'Integer',
+            'Long',
+            'Double',
+            'Float',
+            'Boolean',
+            'Byte',
+            'Short',
+            'Character',
+            'Object',
             'java.lang.String',
             'java.lang.Integer',
             'java.lang.Long',
@@ -161,5 +199,113 @@ export class XmlParameterDefinitionProvider implements vscode.DefinitionProvider
         ];
 
         return primitives.includes(className) || javaLang.includes(className);
+    }
+
+    /**
+     * Check if a class name is a collection type
+     */
+    private isCollectionType(className: string): boolean {
+        const collectionTypes = [
+            'List',
+            'Set',
+            'Map',
+            'Collection',
+            'ArrayList',
+            'LinkedList',
+            'HashSet',
+            'HashMap',
+            'LinkedHashMap',
+            'TreeMap',
+            'TreeSet',
+            'Vector',
+            'Stack',
+            'Queue',
+            'Deque',
+            'java.util.List',
+            'java.util.Set',
+            'java.util.Map',
+            'java.util.Collection',
+            'java.util.ArrayList',
+            'java.util.LinkedList',
+            'java.util.HashSet',
+            'java.util.HashMap',
+            'java.util.LinkedHashMap',
+            'java.util.TreeMap',
+            'java.util.TreeSet',
+            'java.util.Vector',
+            'java.util.Stack',
+            'java.util.Queue',
+            'java.util.Deque'
+        ];
+
+        return collectionTypes.includes(className);
+    }
+
+    /**
+     * Resolve the fully qualified class name from a simple type name in a Java file
+     */
+    private async resolveFullyQualifiedType(javaPath: string, simpleTypeName: string): Promise<string | null> {
+        try {
+            // If the type name already contains dots, it's already fully qualified
+            if (simpleTypeName.includes('.')) {
+                console.log(`[XmlParameterDefinitionProvider] ${simpleTypeName} is already fully qualified`);
+                return simpleTypeName;
+            }
+
+            const fs = await import('fs');
+            const content = await fs.promises.readFile(javaPath, 'utf-8');
+            const lines = content.split('\n');
+
+            // Look for import statements that match the simple type name
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                // Stop at the class/interface declaration
+                if (trimmed.match(/(?:class|interface|enum)\s+/)) {
+                    break;
+                }
+
+                // Check for matching import
+                const importMatch = trimmed.match(/import\s+([\w.]+\.(\w+))\s*;/);
+                if (importMatch) {
+                    const fullyQualified = importMatch[1];
+                    const importedSimpleName = importMatch[2];
+
+                    if (importedSimpleName === simpleTypeName) {
+                        console.log(`[XmlParameterDefinitionProvider] Resolved ${simpleTypeName} to ${fullyQualified}`);
+                        return fullyQualified;
+                    }
+                }
+            }
+
+            // If not found in imports, check if it's in the same package
+            const packageMatch = content.match(/package\s+([\w.]+)\s*;/);
+            if (packageMatch) {
+                const packageName = packageMatch[1];
+                const possibleFullyQualified = `${packageName}.${simpleTypeName}`;
+
+                // Try to find the class file in the same package
+                const pathPattern = possibleFullyQualified.replace(/\./g, '/') + '.java';
+                const searchPattern = `**/${pathPattern}`;
+
+                const files = await vscode.workspace.findFiles(
+                    searchPattern,
+                    '**/{ node_modules,target,.git,.vscode,.idea,.settings,build,dist,out,bin}/**',
+                    1
+                );
+
+                if (files.length > 0) {
+                    console.log(`[XmlParameterDefinitionProvider] Resolved ${simpleTypeName} to ${possibleFullyQualified} (same package)`);
+                    return possibleFullyQualified;
+                }
+            }
+
+            console.log(`[XmlParameterDefinitionProvider] Could not resolve fully qualified name for ${simpleTypeName}`);
+            return null;
+
+        } catch (error) {
+            console.error(`[XmlParameterDefinitionProvider] Error resolving type ${simpleTypeName}:`, error);
+            return null;
+        }
     }
 }
