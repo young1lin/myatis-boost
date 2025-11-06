@@ -16,7 +16,9 @@ import {
     XmlResultMapPropertyDefinitionProvider,
     XmlResultMapDefinitionProvider,
     XmlParameterDefinitionProvider,
-    ParameterValidator
+    ParameterValidator,
+    XmlSqlHoverProvider,
+    JavaSqlHoverProvider
 } from './navigator';
 import { MybatisBindingDecorator } from './decorator';
 
@@ -54,6 +56,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Register XML-related definition providers (always enabled)
     registerXmlDefinitionProviders(context);
+
+    // Register Hover providers for SQL composition (always enabled)
+    registerHoverProviders(context);
 
     // Register Java-to-XML navigation providers based on configuration
     const useDefinitionProvider = config.get<boolean>('useDefinitionProvider', false);
@@ -366,6 +371,27 @@ function registerXmlDefinitionProviders(context: vscode.ExtensionContext) {
     );
 
     console.log(`[MyBatis Boost] ${vscode.l10n.t('extension.xmlDefinitionProvidersRegistered')}`);
+}
+
+/**
+ * Register Hover providers for SQL composition (always enabled)
+ */
+function registerHoverProviders(context: vscode.ExtensionContext) {
+    context.subscriptions.push(
+        // XML SQL hover provider - shows composed SQL when hovering over statement ids
+        vscode.languages.registerHoverProvider(
+            { language: 'xml', pattern: '**/*.xml' },
+            new XmlSqlHoverProvider()
+        ),
+
+        // Java SQL hover provider - shows composed SQL when hovering over mapper methods
+        vscode.languages.registerHoverProvider(
+            { language: 'java', pattern: '**/*.java' },
+            new JavaSqlHoverProvider(fileMapper)
+        )
+    );
+
+    console.log('[MyBatis Boost] Hover providers registered');
 }
 
 /**
