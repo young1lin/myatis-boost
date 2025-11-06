@@ -66,7 +66,8 @@
       "Bash(clear:*)",
       "Bash(cls:*)",
       "Bash($null)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "WebSearch"
     ],
     "deny": [
       "Bash(rm -rf /*)",
