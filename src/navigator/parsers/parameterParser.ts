@@ -231,10 +231,11 @@ export async function extractLocalVariables(
     const lines = content.split('\n');
     const localVars = new Set<string>();
 
-    // Find the statement in the file
+    // Find the statement in the file and accumulate its content
     let inStatement = false;
     let braceLevel = 0;
     let statementStartLine = -1;
+    let statementContent = '';
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -251,6 +252,9 @@ export async function extractLocalVariables(
         }
 
         if (inStatement) {
+            // Accumulate statement content (join lines with space to preserve attributes)
+            statementContent += line + ' ';
+
             // Track opening tags
             const openTags = (line.match(new RegExp(`<${statement.type}(?:\\s|>)`, 'g')) || []).length;
             braceLevel += openTags;
@@ -259,14 +263,16 @@ export async function extractLocalVariables(
             const closeTags = (line.match(new RegExp(`</${statement.type}>`, 'g')) || []).length;
             braceLevel -= closeTags;
 
-            // Extract local variables from this line
-            extractLocalVariablesFromLine(line, localVars);
-
             // Check if we've exited the statement
             if (braceLevel === 0 && i > statementStartLine) {
                 break;
             }
         }
+    }
+
+    // Extract local variables from the complete statement content
+    if (statementContent) {
+        extractLocalVariablesFromContent(statementContent, localVars);
     }
 
     return localVars;
@@ -288,10 +294,11 @@ export async function extractAttributeReferences(
     const lines = content.split('\n');
     const attrRefs = new Set<string>();
 
-    // Find the statement in the file
+    // Find the statement in the file and accumulate its content
     let inStatement = false;
     let braceLevel = 0;
     let statementStartLine = -1;
+    let statementContent = '';
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
@@ -308,6 +315,9 @@ export async function extractAttributeReferences(
         }
 
         if (inStatement) {
+            // Accumulate statement content (join lines with space to preserve attributes)
+            statementContent += line + ' ';
+
             // Track opening tags
             const openTags = (line.match(new RegExp(`<${statement.type}(?:\\s|>)`, 'g')) || []).length;
             braceLevel += openTags;
@@ -316,9 +326,6 @@ export async function extractAttributeReferences(
             const closeTags = (line.match(new RegExp(`</${statement.type}>`, 'g')) || []).length;
             braceLevel -= closeTags;
 
-            // Extract attribute references from this line
-            extractAttributeReferencesFromLine(line, attrRefs);
-
             // Check if we've exited the statement
             if (braceLevel === 0 && i > statementStartLine) {
                 break;
@@ -326,22 +333,27 @@ export async function extractAttributeReferences(
         }
     }
 
+    // Extract attribute references from the complete statement content
+    if (statementContent) {
+        extractAttributeReferencesFromContent(statementContent, attrRefs);
+    }
+
     return attrRefs;
 }
 
 /**
- * Extract attribute references from a single line
+ * Extract attribute references from statement content
  *
- * @param line - Line content
+ * @param content - Statement content (potentially multi-line tags joined with spaces)
  * @param attrRefs - Set to accumulate attribute reference names
  */
-function extractAttributeReferencesFromLine(line: string, attrRefs: Set<string>): void {
+function extractAttributeReferencesFromContent(content: string, attrRefs: Set<string>): void {
     // Extract from <foreach> tag - collection attribute
     // <foreach collection="ids" item="id" index="index">
     const foreachRegex = /<foreach[^>]*>/g;
     let match: RegExpExecArray | null;
 
-    while ((match = foreachRegex.exec(line)) !== null) {
+    while ((match = foreachRegex.exec(content)) !== null) {
         const foreachTag = match[0];
 
         // Extract 'collection' attribute
@@ -355,19 +367,19 @@ function extractAttributeReferencesFromLine(line: string, attrRefs: Set<string>)
 }
 
 /**
- * Extract local variables from a single line
+ * Extract local variables from statement content
  * Handles <foreach> and <bind> tags
  *
- * @param line - Line content
+ * @param content - Statement content (potentially multi-line tags joined with spaces)
  * @param localVars - Set to accumulate local variable names
  */
-function extractLocalVariablesFromLine(line: string, localVars: Set<string>): void {
+function extractLocalVariablesFromContent(content: string, localVars: Set<string>): void {
     // Extract from <foreach> tag
     // <foreach collection="ids" item="id" index="index">
     const foreachRegex = /<foreach[^>]*>/g;
     let match: RegExpExecArray | null;
 
-    while ((match = foreachRegex.exec(line)) !== null) {
+    while ((match = foreachRegex.exec(content)) !== null) {
         const foreachTag = match[0];
 
         // Extract 'item' attribute
@@ -387,7 +399,7 @@ function extractLocalVariablesFromLine(line: string, localVars: Set<string>): vo
     // <bind name="pattern" value="'%' + _parameter.getName() + '%'" />
     const bindRegex = /<bind[^>]*>/g;
 
-    while ((match = bindRegex.exec(line)) !== null) {
+    while ((match = bindRegex.exec(content)) !== null) {
         const bindTag = match[0];
 
         // Extract 'name' attribute
