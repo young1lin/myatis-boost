@@ -10,6 +10,11 @@ import { readFirstLines, readFile } from '../../utils/fileUtils';
  * Removes all <!-- ... --> comment blocks while preserving line numbers
  */
 function removeXmlComments(content: string): string {
+    // Guard against undefined/null content
+    if (!content) {
+        return '';
+    }
+
     // Remove XML comments (<!-- ... -->)
     // Replace comment content with newlines to preserve line numbers
     return content.replace(/<!--[\s\S]*?-->/g, (match) => {

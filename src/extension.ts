@@ -193,6 +193,12 @@ function registerCommands(context: vscode.ExtensionContext) {
     // Automatically detects whether to jump to mapper namespace or statement
     context.subscriptions.push(
         vscode.commands.registerCommand('mybatis-boost.jumpToXml', async (javaUri: vscode.Uri, xmlPath: string, methodName?: string) => {
+            // Validate parameters
+            if (!xmlPath) {
+                vscode.window.showWarningMessage('MyBatis Boost: XML file path is required');
+                return;
+            }
+
             const { findXmlMapperPosition, findXmlStatementPosition } = await import('./navigator/parsers/xmlParser.js');
 
             // If methodName is provided, jump to statement; otherwise jump to mapper
