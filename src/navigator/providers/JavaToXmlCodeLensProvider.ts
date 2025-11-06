@@ -85,14 +85,30 @@ export class JavaToXmlCodeLensProvider implements vscode.CodeLensProvider {
                 }
 
                 // Check if the method has MyBatis SQL annotations (@Select, @Insert, @Update, @Delete)
-                // Look back up to 5 lines for annotations
+                // Look back only for annotations directly above this method (stop at code or empty lines)
                 let hasSqlAnnotation = false;
-                for (let j = Math.max(0, i - 5); j < i; j++) {
-                    const prevLine = lines[j];
+                for (let j = i - 1; j >= Math.max(0, i - 10); j--) {
+                    const prevLine = lines[j].trim();
+
+                    // Empty line or comment line - continue searching
+                    if (prevLine === '' || prevLine.startsWith('//') || prevLine.startsWith('/*') || prevLine.startsWith('*')) {
+                        continue;
+                    }
+
+                    // Found SQL annotation - mark and stop
                     if (/@(Select|Insert|Update|Delete)\s*\(/.test(prevLine)) {
                         hasSqlAnnotation = true;
                         break;
                     }
+
+                    // Found other annotation (like @Param, @Nonnull) - continue searching
+                    if (prevLine.startsWith('@')) {
+                        continue;
+                    }
+
+                    // Found other code (method, field, etc.) - stop searching
+                    // This means we've reached a different method/code block
+                    break;
                 }
 
                 // Skip methods with SQL annotations (they don't need XML)
