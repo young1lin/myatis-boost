@@ -84,16 +84,16 @@ function extractParametersFromLine(line: string, lineNumber: number): ParameterR
         const isSubstitution = match[3] !== undefined; // ${param}
 
         const fullMatch = isPrepared ? match[1] : match[3]; // e.g., "#{name}" or "${name}"
-        const paramName = isPrepared ? match[2].trim() : match[4].trim(); // e.g., "name"
+        let paramExpression = isPrepared ? match[2].trim() : match[4].trim(); // e.g., "name,jdbcType=VARCHAR"
         const startColumn = match.index;
         const endColumn = match.index + fullMatch.length;
 
-        // Handle property paths (e.g., user.name -> user)
-        // For now, we only validate the root property
-        const rootParam = paramName.split('.')[0];
+        // Extract the actual parameter name from MyBatis OGNL expression
+        // Handle formats like: #{paramName,jdbcType=VARCHAR,javaType=string}
+        const paramName = extractParamNameFromOgnl(paramExpression);
 
         parameters.push({
-            name: rootParam,
+            name: paramName,
             line: lineNumber,
             startColumn: startColumn,
             endColumn: endColumn,
@@ -102,6 +102,29 @@ function extractParametersFromLine(line: string, lineNumber: number): ParameterR
     }
 
     return parameters;
+}
+
+/**
+ * Extract the actual parameter name from a MyBatis OGNL expression
+ * Handles formats like:
+ * - "paramName" -> "paramName"
+ * - "paramName,jdbcType=VARCHAR" -> "paramName"
+ * - "user.name,jdbcType=VARCHAR" -> "user"
+ * - "paramName,jdbcType=VARCHAR,javaType=string" -> "paramName"
+ *
+ * @param ognlExpression - The full OGNL expression inside #{} or ${}
+ * @returns The root parameter name
+ */
+function extractParamNameFromOgnl(ognlExpression: string): string {
+    // First, split by comma to separate the property path from attributes (jdbcType, javaType, etc.)
+    const parts = ognlExpression.split(',');
+    const propertyPath = parts[0].trim();
+
+    // Then, handle nested property paths (e.g., user.name -> user)
+    // We only validate the root property
+    const rootParam = propertyPath.split('.')[0];
+
+    return rootParam;
 }
 
 /**
@@ -181,11 +204,12 @@ export function getParameterAtPosition(
         const endColumn = match.index + match[0].length;
 
         if (column >= startColumn && column <= endColumn) {
-            const paramName = match[1].trim();
-            const rootParam = paramName.split('.')[0];
+            const paramExpression = match[1].trim();
+            // Extract the actual parameter name from MyBatis OGNL expression
+            const paramName = extractParamNameFromOgnl(paramExpression);
 
             return {
-                name: rootParam,
+                name: paramName,
                 startColumn: startColumn,
                 endColumn: endColumn,
                 type: 'prepared'
@@ -201,11 +225,12 @@ export function getParameterAtPosition(
         const endColumn = match.index + match[0].length;
 
         if (column >= startColumn && column <= endColumn) {
-            const paramName = match[1].trim();
-            const rootParam = paramName.split('.')[0];
+            const paramExpression = match[1].trim();
+            // Extract the actual parameter name from MyBatis OGNL expression
+            const paramName = extractParamNameFromOgnl(paramExpression);
 
             return {
-                name: rootParam,
+                name: paramName,
                 startColumn: startColumn,
                 endColumn: endColumn,
                 type: 'substitution'
