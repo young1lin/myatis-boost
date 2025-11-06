@@ -74,8 +74,3 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - ✨ **Custom XML directories support** (Priority 1 in matching)
 - ✨ **Multi-line tag parsing support**
 - ✨ **Configurable settings**
-
-### Fixed
-- 🐛 **Navigation Precision**: XML statement to Java method navigation now only works when cursor is specifically on the `id="methodName"` attribute. Previously, clicking anywhere inside the statement block would trigger navigation, which was too permissive and could cause unintended navigation.
-- 🐛 **API Usage**: Fixed incorrect usage of `getByXmlPath()` - now correctly uses `getJavaPath()` API method
-- 🐛 **Command Invocation**: Fixed `jumpToXml` command to work with both CodeLens and manual invocation, with proper cursor position detection
