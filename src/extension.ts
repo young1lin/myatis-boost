@@ -20,6 +20,7 @@ import {
 } from './navigator';
 import { XmlSqlHoverProvider, JavaSqlHoverProvider } from './hover';
 import { MybatisBindingDecorator } from './decorator';
+import { findProjectFileInParents } from './utils/projectDetector';
 
 let fileMapper: FileMapper;
 let bindingDecorator: MybatisBindingDecorator;
@@ -124,7 +125,13 @@ export async function activate(context: vscode.ExtensionContext) {
 }
 
 /**
- * Quick check if workspace contains a Java project
+ * Check if workspace contains a Java project.
+ * Uses a two-phase strategy to handle both standard and nested project structures:
+ * 1. Walk up directory tree to find project files (supports nested modules)
+ * 2. Fall back to checking for .java files if no project files found
+ *
+ * This approach is similar to Red Hat JLS and supports multi-module Maven/Gradle projects
+ * where the workspace folder might be opened at a nested path (e.g., ./java-project/integration-test/src/main)
  */
 async function isJavaProject(): Promise<boolean> {
     const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -132,22 +139,30 @@ async function isJavaProject(): Promise<boolean> {
         return false;
     }
 
+    // Strategy 1: Walk up directory tree to find project indicator files
+    // This handles cases where workspace is opened at a nested path
     for (const folder of workspaceFolders) {
         const folderPath = folder.uri.fsPath;
+        const projectFile = findProjectFileInParents(folderPath);
 
-        // Check for common Java project indicators
-        const indicators = [
-            path.join(folderPath, 'pom.xml'),
-            path.join(folderPath, 'build.gradle'),
-            path.join(folderPath, 'build.gradle.kts'),
-            path.join(folderPath, 'src', 'main', 'java')
-        ];
-
-        for (const indicator of indicators) {
-            if (fs.existsSync(indicator)) {
-                return true;
-            }
+        if (projectFile) {
+            console.log(`[MyBatis Boost] Found project file: ${projectFile}`);
+            return true;
         }
+    }
+
+    // Strategy 2: Fall back to checking for Java files (lenient detection)
+    // This ensures the extension activates in Java projects even without build files
+    console.log('[MyBatis Boost] No project files found, checking for Java files...');
+    const javaFiles = await vscode.workspace.findFiles(
+        '**/*.java',
+        '**/{ node_modules,target,.git,build,dist,out,bin}/**',
+        1  // Only need to find 1 file to confirm it's a Java project
+    );
+
+    if (javaFiles.length > 0) {
+        console.log('[MyBatis Boost] Found Java files, treating as Java project');
+        return true;
     }
 
     return false;
