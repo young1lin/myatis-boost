@@ -1,5 +1,7 @@
 # Change Log
 
+English | [简体中文](CHANGELOG.zh-cn.md)
+
 All notable changes to the "mybatis-boost" extension will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
