@@ -2,19 +2,21 @@
  * Fallback regex-based DDL parser for PostgreSQL, Oracle, and MySQL backup
  */
 
-import { ParsedSchema, ColumnInfo } from '../type';
+import { ParsedSchema, ColumnInfo, DateTimeType } from '../type';
 import { snakeToPascal, snakeToCamel, mapSqlTypeToJavaType } from './utils';
 
 /**
  * Parse DDL using regex-based approach
  * @param sql - CREATE TABLE SQL statement
  * @param dbType - Database type
+ * @param dateTimeType - Date/Time type preference (default: 'LocalDateTime')
  * @returns Parsed schema or null if parsing failed
  * @throws Error if composite primary key detected
  */
 export function parseWithRegex(
   sql: string,
-  dbType: 'mysql' | 'postgresql' | 'oracle'
+  dbType: 'mysql' | 'postgresql' | 'oracle',
+  dateTimeType: DateTimeType = 'LocalDateTime'
 ): ParsedSchema | null {
   try {
     // Extract table name
@@ -59,7 +61,7 @@ export function parseWithRegex(
       }
 
       // Parse column definition
-      const columnInfo = parseColumnDefinition(trimmedLine, dbType);
+      const columnInfo = parseColumnDefinition(trimmedLine, dbType, dateTimeType);
       if (columnInfo) {
         columns.push(columnInfo);
       }
@@ -111,11 +113,13 @@ export function parseWithRegex(
  * Parse individual column definition
  * @param line - Column definition line
  * @param dbType - Database type
+ * @param dateTimeType - Date/Time type preference
  * @returns ColumnInfo or null if parsing failed
  */
 function parseColumnDefinition(
   line: string,
-  dbType: 'mysql' | 'postgresql' | 'oracle'
+  dbType: 'mysql' | 'postgresql' | 'oracle',
+  dateTimeType: DateTimeType
 ): ColumnInfo | null {
   // Remove leading/trailing whitespace and quotes
   line = line.trim();
@@ -164,7 +168,7 @@ function parseColumnDefinition(
   }
 
   // Map to Java type
-  const javaType = mapSqlTypeToJavaType(sqlType, nullable, dbType);
+  const javaType = mapSqlTypeToJavaType(sqlType, nullable, dbType, dateTimeType);
 
   return {
     columnName,

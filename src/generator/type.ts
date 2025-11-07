@@ -36,8 +36,14 @@ export interface ParseResult {
 }
 
 /**
+ * Date/Time type mapping strategy
+ */
+export type DateTimeType = 'Date' | 'LocalDateTime' | 'Instant';
+
+/**
  * Options for DDL parsing
  */
 export interface ParseOptions {
   dbType?: 'mysql' | 'postgresql' | 'oracle';
+  dateTimeType?: DateTimeType;  // Default: 'LocalDateTime'
 }

@@ -28,11 +28,12 @@ export function parseDDL(sql: string, options?: ParseOptions): ParseResult {
 
     // Step 2: Detect database type if not provided
     const dbType = options?.dbType || detectDatabaseType(sql);
+    const dateTimeType = options?.dateTimeType || 'LocalDateTime';
 
     // Step 3: Try library parser for MySQL
     if (dbType === 'mysql') {
       try {
-        const result = parseWithLibrary(sql);
+        const result = parseWithLibrary(sql, dateTimeType);
         if (result) {
           return {
             success: true,
@@ -56,7 +57,7 @@ export function parseDDL(sql: string, options?: ParseOptions): ParseResult {
 
     // Step 4: Fallback to regex parser
     try {
-      const result = parseWithRegex(sql, dbType);
+      const result = parseWithRegex(sql, dbType, dateTimeType);
       if (result) {
         return {
           success: true,

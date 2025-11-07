@@ -3,16 +3,20 @@
  */
 
 import { Parser } from 'sql-ddl-to-json-schema';
-import { ParsedSchema, ColumnInfo } from '../type';
+import { ParsedSchema, ColumnInfo, DateTimeType } from '../type';
 import { snakeToPascal, snakeToCamel, mapSqlTypeToJavaType } from './utils';
 
 /**
  * Parse MySQL DDL using sql-ddl-to-json-schema library
  * @param sql - CREATE TABLE SQL statement
+ * @param dateTimeType - Date/Time type preference (default: 'LocalDateTime')
  * @returns Parsed schema or null if parsing failed
  * @throws Error if composite primary key detected
  */
-export function parseWithLibrary(sql: string): ParsedSchema | null {
+export function parseWithLibrary(
+  sql: string,
+  dateTimeType: DateTimeType = 'LocalDateTime'
+): ParsedSchema | null {
   try {
     const parser = new Parser('mysql');
     parser.feed(sql);
@@ -70,7 +74,7 @@ export function parseWithLibrary(sql: string): ParsedSchema | null {
         const nullable = col.options?.nullable === undefined || col.options?.nullable === true;
 
         // Map to Java type
-        const javaType = mapSqlTypeToJavaType(sqlType, nullable, 'mysql');
+        const javaType = mapSqlTypeToJavaType(sqlType, nullable, 'mysql', dateTimeType);
 
         // Extract default value
         let defaultValue: string | undefined;

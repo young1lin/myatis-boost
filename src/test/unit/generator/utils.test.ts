@@ -3,7 +3,7 @@
  */
 
 import * as assert from 'assert';
-import { snakeToPascal, snakeToCamel, mapSqlTypeToJavaType } from '../../../generator/parser/utils';
+import { snakeToPascal, snakeToCamel, mapSqlTypeToJavaType, toFullyQualifiedType } from '../../../generator/parser/utils';
 
 describe('Utility Functions', () => {
   describe('snakeToPascal', () => {
@@ -49,15 +49,15 @@ describe('Utility Functions', () => {
       assert.strictEqual(mapSqlTypeToJavaType('LONGTEXT', true, 'mysql'), 'String');
     });
 
-    it('should map integer types correctly based on nullability', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('INT', false, 'mysql'), 'int');
+    it('should map integer types to wrapper types', () => {
+      assert.strictEqual(mapSqlTypeToJavaType('INT', false, 'mysql'), 'Integer');
       assert.strictEqual(mapSqlTypeToJavaType('INT', true, 'mysql'), 'Integer');
-      assert.strictEqual(mapSqlTypeToJavaType('TINYINT', false, 'mysql'), 'int');
+      assert.strictEqual(mapSqlTypeToJavaType('TINYINT', false, 'mysql'), 'Integer');
       assert.strictEqual(mapSqlTypeToJavaType('SMALLINT', true, 'mysql'), 'Integer');
     });
 
-    it('should map BIGINT to Long/long', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BIGINT', false, 'mysql'), 'long');
+    it('should map BIGINT to Long wrapper type', () => {
+      assert.strictEqual(mapSqlTypeToJavaType('BIGINT', false, 'mysql'), 'Long');
       assert.strictEqual(mapSqlTypeToJavaType('BIGINT', true, 'mysql'), 'Long');
     });
 
@@ -68,8 +68,8 @@ describe('Utility Functions', () => {
       assert.strictEqual(mapSqlTypeToJavaType('DOUBLE', true, 'mysql'), 'BigDecimal');
     });
 
-    it('should map boolean types correctly', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN', false, 'mysql'), 'boolean');
+    it('should map boolean types to wrapper type', () => {
+      assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN', false, 'mysql'), 'Boolean');
       assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN', true, 'mysql'), 'Boolean');
       assert.strictEqual(mapSqlTypeToJavaType('BOOL', true, 'mysql'), 'Boolean');
     });
@@ -97,12 +97,12 @@ describe('Utility Functions', () => {
       assert.strictEqual(mapSqlTypeToJavaType('TEXT', true, 'postgresql'), 'String');
     });
 
-    it('should map SERIAL to long', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('SERIAL', false, 'postgresql'), 'long');
+    it('should map SERIAL to Long wrapper type', () => {
+      assert.strictEqual(mapSqlTypeToJavaType('SERIAL', false, 'postgresql'), 'Long');
     });
 
-    it('should map BIGSERIAL to long', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BIGSERIAL', false, 'postgresql'), 'long');
+    it('should map BIGSERIAL to Long wrapper type', () => {
+      assert.strictEqual(mapSqlTypeToJavaType('BIGSERIAL', false, 'postgresql'), 'Long');
     });
 
     it('should map BYTEA to byte array', () => {
@@ -119,8 +119,8 @@ describe('Utility Functions', () => {
       assert.strictEqual(mapSqlTypeToJavaType('VARCHAR2(100)', true, 'oracle'), 'String');
     });
 
-    it('should map NUMBER to Long/long', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('NUMBER', false, 'oracle'), 'long');
+    it('should map NUMBER to Long wrapper type', () => {
+      assert.strictEqual(mapSqlTypeToJavaType('NUMBER', false, 'oracle'), 'Long');
       assert.strictEqual(mapSqlTypeToJavaType('NUMBER', true, 'oracle'), 'Long');
     });
 
@@ -144,6 +144,43 @@ describe('Utility Functions', () => {
       assert.strictEqual(mapSqlTypeToJavaType('varchar(50)', true, 'mysql'), 'String');
       assert.strictEqual(mapSqlTypeToJavaType('INT', true, 'mysql'), 'Integer');
       assert.strictEqual(mapSqlTypeToJavaType('int', true, 'mysql'), 'Integer');
+    });
+  });
+
+  describe('toFullyQualifiedType', () => {
+    it('should convert java.lang types', () => {
+      assert.strictEqual(toFullyQualifiedType('String'), 'java.lang.String');
+      assert.strictEqual(toFullyQualifiedType('Integer'), 'java.lang.Integer');
+      assert.strictEqual(toFullyQualifiedType('Long'), 'java.lang.Long');
+      assert.strictEqual(toFullyQualifiedType('Boolean'), 'java.lang.Boolean');
+    });
+
+    it('should convert java.math types', () => {
+      assert.strictEqual(toFullyQualifiedType('BigDecimal'), 'java.math.BigDecimal');
+      assert.strictEqual(toFullyQualifiedType('BigInteger'), 'java.math.BigInteger');
+    });
+
+    it('should convert java.time types', () => {
+      assert.strictEqual(toFullyQualifiedType('LocalDate'), 'java.time.LocalDate');
+      assert.strictEqual(toFullyQualifiedType('LocalTime'), 'java.time.LocalTime');
+      assert.strictEqual(toFullyQualifiedType('LocalDateTime'), 'java.time.LocalDateTime');
+      assert.strictEqual(toFullyQualifiedType('Instant'), 'java.time.Instant');
+    });
+
+    it('should convert java.util types', () => {
+      assert.strictEqual(toFullyQualifiedType('Date'), 'java.util.Date');
+      assert.strictEqual(toFullyQualifiedType('UUID'), 'java.util.UUID');
+    });
+
+    it('should handle array types', () => {
+      assert.strictEqual(toFullyQualifiedType('String[]'), 'java.lang.String[]');
+      assert.strictEqual(toFullyQualifiedType('Integer[]'), 'java.lang.Integer[]');
+      assert.strictEqual(toFullyQualifiedType('byte[]'), 'byte[]');
+    });
+
+    it('should return unknown types as-is', () => {
+      assert.strictEqual(toFullyQualifiedType('CustomType'), 'CustomType');
+      assert.strictEqual(toFullyQualifiedType('com.example.MyClass'), 'com.example.MyClass');
     });
   });
 });

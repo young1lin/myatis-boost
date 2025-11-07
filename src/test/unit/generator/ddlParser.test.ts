@@ -58,7 +58,7 @@ describe('DDL Parser', () => {
       const orderIdCol = result.data.columns.find(c => c.columnName === 'order_id');
       assert.ok(orderIdCol);
       assert.strictEqual(orderIdCol.isPrimaryKey, true);
-      assert.strictEqual(orderIdCol.javaType, 'long');
+      assert.strictEqual(orderIdCol.javaType, 'Long');
     });
 
     it('should parse MySQL table with COMMENT', () => {
@@ -127,7 +127,7 @@ describe('DDL Parser', () => {
       // Check SERIAL type mapping
       const idCol = result.data.columns.find(c => c.columnName === 'id');
       assert.ok(idCol);
-      assert.strictEqual(idCol.javaType, 'long');
+      assert.strictEqual(idCol.javaType, 'Long');
       assert.strictEqual(idCol.isPrimaryKey, true);
     });
 
@@ -147,7 +147,7 @@ describe('DDL Parser', () => {
 
       const logIdCol = result.data.columns.find(c => c.columnName === 'log_id');
       assert.ok(logIdCol);
-      assert.strictEqual(logIdCol.javaType, 'long');
+      assert.strictEqual(logIdCol.javaType, 'Long');
     });
 
     it('should parse PostgreSQL table with BYTEA', () => {
@@ -190,7 +190,7 @@ describe('DDL Parser', () => {
 
       const idCol = result.data.columns.find(c => c.columnName === 'employee_id');
       assert.ok(idCol);
-      assert.strictEqual(idCol.javaType, 'long');
+      assert.strictEqual(idCol.javaType, 'Long');
     });
 
     it('should parse Oracle table with CLOB', () => {
@@ -305,7 +305,7 @@ describe('DDL Parser', () => {
       assert.strictEqual(nullableBool.javaType, 'Boolean');
     });
 
-    it('should map NOT NULL columns to primitive types', () => {
+    it('should map NOT NULL columns to wrapper types', () => {
       const sql = `
         CREATE TABLE test_types (
           id INT PRIMARY KEY,
@@ -322,16 +322,16 @@ describe('DDL Parser', () => {
 
       const count = result.data.columns.find(c => c.columnName === 'count');
       assert.ok(count);
-      assert.strictEqual(count.javaType, 'int');
+      assert.strictEqual(count.javaType, 'Integer');
       assert.strictEqual(count.nullable, false);
 
       const total = result.data.columns.find(c => c.columnName === 'total');
       assert.ok(total);
-      assert.strictEqual(total.javaType, 'long');
+      assert.strictEqual(total.javaType, 'Long');
 
       const active = result.data.columns.find(c => c.columnName === 'active');
       assert.ok(active);
-      assert.strictEqual(active.javaType, 'boolean');
+      assert.strictEqual(active.javaType, 'Boolean');
     });
 
     it('should map date/time types correctly', () => {
@@ -540,6 +540,92 @@ describe('DDL Parser', () => {
       const lastLoginTime = result.data.columns.find(c => c.columnName === 'last_login_time');
       assert.ok(lastLoginTime);
       assert.strictEqual(lastLoginTime.fieldName, 'lastLoginTime');
+    });
+  });
+
+  describe('Date/Time type configuration', () => {
+    it('should use LocalDateTime by default', () => {
+      const sql = `
+        CREATE TABLE events (
+          id INT PRIMARY KEY,
+          created_at DATETIME,
+          updated_at TIMESTAMP
+        )
+      `;
+
+      const result = parseDDL(sql, { dbType: 'mysql' });
+
+      assert.strictEqual(result.success, true);
+      assert.ok(result.data);
+
+      const createdAt = result.data.columns.find(c => c.columnName === 'created_at');
+      assert.ok(createdAt);
+      assert.strictEqual(createdAt.javaType, 'LocalDateTime');
+
+      const updatedAt = result.data.columns.find(c => c.columnName === 'updated_at');
+      assert.ok(updatedAt);
+      assert.strictEqual(updatedAt.javaType, 'LocalDateTime');
+    });
+
+    it('should support Date type configuration', () => {
+      const sql = `
+        CREATE TABLE events (
+          id INT PRIMARY KEY,
+          created_at DATETIME
+        )
+      `;
+
+      const result = parseDDL(sql, { dbType: 'mysql', dateTimeType: 'Date' });
+
+      assert.strictEqual(result.success, true);
+      assert.ok(result.data);
+
+      const createdAt = result.data.columns.find(c => c.columnName === 'created_at');
+      assert.ok(createdAt);
+      assert.strictEqual(createdAt.javaType, 'Date');
+    });
+
+    it('should support Instant type configuration', () => {
+      const sql = `
+        CREATE TABLE events (
+          id INT PRIMARY KEY,
+          created_at TIMESTAMP
+        )
+      `;
+
+      const result = parseDDL(sql, { dbType: 'mysql', dateTimeType: 'Instant' });
+
+      assert.strictEqual(result.success, true);
+      assert.ok(result.data);
+
+      const createdAt = result.data.columns.find(c => c.columnName === 'created_at');
+      assert.ok(createdAt);
+      assert.strictEqual(createdAt.javaType, 'Instant');
+    });
+
+    it('should always map DATE to LocalDate regardless of dateTimeType', () => {
+      const sql = `
+        CREATE TABLE events (
+          id INT PRIMARY KEY,
+          event_date DATE,
+          created_at DATETIME
+        )
+      `;
+
+      const result = parseDDL(sql, { dbType: 'mysql', dateTimeType: 'Date' });
+
+      assert.strictEqual(result.success, true);
+      assert.ok(result.data);
+
+      // DATE always maps to LocalDate
+      const eventDate = result.data.columns.find(c => c.columnName === 'event_date');
+      assert.ok(eventDate);
+      assert.strictEqual(eventDate.javaType, 'LocalDate');
+
+      // DATETIME respects dateTimeType configuration
+      const createdAt = result.data.columns.find(c => c.columnName === 'created_at');
+      assert.ok(createdAt);
+      assert.strictEqual(createdAt.javaType, 'Date');
     });
   });
 

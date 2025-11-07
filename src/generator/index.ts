@@ -4,4 +4,5 @@
  */
 
 export { parseDDL } from './parser/ddlParser';
-export { ParseResult, ParsedSchema, ColumnInfo, ParseOptions } from './type';
+export { ParseResult, ParsedSchema, ColumnInfo, ParseOptions, DateTimeType } from './type';
+export { toFullyQualifiedType } from './parser/utils';
