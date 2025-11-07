@@ -74,7 +74,7 @@ export function parseWithLibrary(
         const nullable = col.options?.nullable === undefined || col.options?.nullable === true;
 
         // Map to Java type
-        const javaType = mapSqlTypeToJavaType(sqlType, nullable, 'mysql', dateTimeType);
+        const javaType = mapSqlTypeToJavaType(sqlType, dateTimeType);
 
         // Extract default value
         let defaultValue: string | undefined;

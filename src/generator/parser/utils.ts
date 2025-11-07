@@ -156,15 +156,11 @@ export function snakeToCamel(str: string): string {
 /**
  * Map SQL type to Java type (wrapper types only)
  * @param sqlType - SQL type string (e.g., 'VARCHAR(50)', 'INT', 'BIGINT')
- * @param nullable - Whether the column is nullable (currently unused, all wrapper types)
- * @param dbType - Database type (for future database-specific mappings)
  * @param dateTimeType - Date/Time type preference (default: 'LocalDateTime')
  * @returns Java wrapper type string
  */
 export function mapSqlTypeToJavaType(
   sqlType: string,
-  nullable: boolean,
-  dbType: 'mysql' | 'postgresql' | 'oracle',
   dateTimeType: DateTimeType = 'LocalDateTime'
 ): string {
   const normalizedType = sqlType.toUpperCase().replace(/\(.*\)/, '').trim();

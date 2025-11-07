@@ -43,107 +43,107 @@ describe('Utility Functions', () => {
 
   describe('mapSqlTypeToJavaType - MySQL', () => {
     it('should map string types to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('VARCHAR(50)', true, 'mysql'), 'String');
-      assert.strictEqual(mapSqlTypeToJavaType('CHAR(10)', true, 'mysql'), 'String');
-      assert.strictEqual(mapSqlTypeToJavaType('TEXT', true, 'mysql'), 'String');
-      assert.strictEqual(mapSqlTypeToJavaType('LONGTEXT', true, 'mysql'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('VARCHAR(50)'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('CHAR(10)'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('TEXT'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('LONGTEXT'), 'String');
     });
 
     it('should map integer types to wrapper types', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('INT', false, 'mysql'), 'Integer');
-      assert.strictEqual(mapSqlTypeToJavaType('INT', true, 'mysql'), 'Integer');
-      assert.strictEqual(mapSqlTypeToJavaType('TINYINT', false, 'mysql'), 'Integer');
-      assert.strictEqual(mapSqlTypeToJavaType('SMALLINT', true, 'mysql'), 'Integer');
+      assert.strictEqual(mapSqlTypeToJavaType('INT'), 'Integer');
+      assert.strictEqual(mapSqlTypeToJavaType('INT'), 'Integer');
+      assert.strictEqual(mapSqlTypeToJavaType('TINYINT'), 'Integer');
+      assert.strictEqual(mapSqlTypeToJavaType('SMALLINT'), 'Integer');
     });
 
     it('should map BIGINT to Long wrapper type', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BIGINT', false, 'mysql'), 'Long');
-      assert.strictEqual(mapSqlTypeToJavaType('BIGINT', true, 'mysql'), 'Long');
+      assert.strictEqual(mapSqlTypeToJavaType('BIGINT'), 'Long');
+      assert.strictEqual(mapSqlTypeToJavaType('BIGINT'), 'Long');
     });
 
     it('should map decimal types to BigDecimal', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('DECIMAL(10,2)', true, 'mysql'), 'BigDecimal');
-      assert.strictEqual(mapSqlTypeToJavaType('NUMERIC(5,4)', true, 'mysql'), 'BigDecimal');
-      assert.strictEqual(mapSqlTypeToJavaType('FLOAT', true, 'mysql'), 'BigDecimal');
-      assert.strictEqual(mapSqlTypeToJavaType('DOUBLE', true, 'mysql'), 'BigDecimal');
+      assert.strictEqual(mapSqlTypeToJavaType('DECIMAL(10,2)'), 'BigDecimal');
+      assert.strictEqual(mapSqlTypeToJavaType('NUMERIC(5,4)'), 'BigDecimal');
+      assert.strictEqual(mapSqlTypeToJavaType('FLOAT'), 'BigDecimal');
+      assert.strictEqual(mapSqlTypeToJavaType('DOUBLE'), 'BigDecimal');
     });
 
     it('should map boolean types to wrapper type', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN', false, 'mysql'), 'Boolean');
-      assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN', true, 'mysql'), 'Boolean');
-      assert.strictEqual(mapSqlTypeToJavaType('BOOL', true, 'mysql'), 'Boolean');
+      assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN'), 'Boolean');
+      assert.strictEqual(mapSqlTypeToJavaType('BOOLEAN'), 'Boolean');
+      assert.strictEqual(mapSqlTypeToJavaType('BOOL'), 'Boolean');
     });
 
     it('should map date/time types', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('DATE', true, 'mysql'), 'LocalDate');
-      assert.strictEqual(mapSqlTypeToJavaType('DATETIME', true, 'mysql'), 'LocalDateTime');
-      assert.strictEqual(mapSqlTypeToJavaType('TIMESTAMP', true, 'mysql'), 'LocalDateTime');
-      assert.strictEqual(mapSqlTypeToJavaType('TIME', true, 'mysql'), 'LocalTime');
+      assert.strictEqual(mapSqlTypeToJavaType('DATE'), 'LocalDate');
+      assert.strictEqual(mapSqlTypeToJavaType('DATETIME'), 'LocalDateTime');
+      assert.strictEqual(mapSqlTypeToJavaType('TIMESTAMP'), 'LocalDateTime');
+      assert.strictEqual(mapSqlTypeToJavaType('TIME'), 'LocalTime');
     });
 
     it('should map binary types to byte array', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BLOB', true, 'mysql'), 'byte[]');
-      assert.strictEqual(mapSqlTypeToJavaType('BINARY', true, 'mysql'), 'byte[]');
-      assert.strictEqual(mapSqlTypeToJavaType('VARBINARY(100)', true, 'mysql'), 'byte[]');
+      assert.strictEqual(mapSqlTypeToJavaType('BLOB'), 'byte[]');
+      assert.strictEqual(mapSqlTypeToJavaType('BINARY'), 'byte[]');
+      assert.strictEqual(mapSqlTypeToJavaType('VARBINARY(100)'), 'byte[]');
     });
 
     it('should map JSON to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('JSON', true, 'mysql'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('JSON'), 'String');
     });
   });
 
   describe('mapSqlTypeToJavaType - PostgreSQL', () => {
     it('should map TEXT to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('TEXT', true, 'postgresql'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('TEXT'), 'String');
     });
 
     it('should map SERIAL to Long wrapper type', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('SERIAL', false, 'postgresql'), 'Long');
+      assert.strictEqual(mapSqlTypeToJavaType('SERIAL'), 'Long');
     });
 
     it('should map BIGSERIAL to Long wrapper type', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BIGSERIAL', false, 'postgresql'), 'Long');
+      assert.strictEqual(mapSqlTypeToJavaType('BIGSERIAL'), 'Long');
     });
 
     it('should map BYTEA to byte array', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('BYTEA', true, 'postgresql'), 'byte[]');
+      assert.strictEqual(mapSqlTypeToJavaType('BYTEA'), 'byte[]');
     });
 
     it('should map JSONB to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('JSONB', true, 'postgresql'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('JSONB'), 'String');
     });
   });
 
   describe('mapSqlTypeToJavaType - Oracle', () => {
     it('should map VARCHAR2 to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('VARCHAR2(100)', true, 'oracle'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('VARCHAR2(100)'), 'String');
     });
 
     it('should map NUMBER to Long wrapper type', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('NUMBER', false, 'oracle'), 'Long');
-      assert.strictEqual(mapSqlTypeToJavaType('NUMBER', true, 'oracle'), 'Long');
+      assert.strictEqual(mapSqlTypeToJavaType('NUMBER'), 'Long');
+      assert.strictEqual(mapSqlTypeToJavaType('NUMBER'), 'Long');
     });
 
     it('should map CLOB to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('CLOB', true, 'oracle'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('CLOB'), 'String');
     });
   });
 
   describe('mapSqlTypeToJavaType - Edge cases', () => {
     it('should default unknown types to String', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('UNKNOWN_TYPE', true, 'mysql'), 'String');
-      assert.strictEqual(mapSqlTypeToJavaType('CUSTOM_TYPE', true, 'postgresql'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('UNKNOWN_TYPE'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('CUSTOM_TYPE'), 'String');
     });
 
     it('should handle types with parameters', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('VARCHAR(255)', true, 'mysql'), 'String');
-      assert.strictEqual(mapSqlTypeToJavaType('DECIMAL(19,4)', true, 'mysql'), 'BigDecimal');
+      assert.strictEqual(mapSqlTypeToJavaType('VARCHAR(255)'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('DECIMAL(19,4)'), 'BigDecimal');
     });
 
     it('should be case-insensitive', () => {
-      assert.strictEqual(mapSqlTypeToJavaType('varchar(50)', true, 'mysql'), 'String');
-      assert.strictEqual(mapSqlTypeToJavaType('INT', true, 'mysql'), 'Integer');
-      assert.strictEqual(mapSqlTypeToJavaType('int', true, 'mysql'), 'Integer');
+      assert.strictEqual(mapSqlTypeToJavaType('varchar(50)'), 'String');
+      assert.strictEqual(mapSqlTypeToJavaType('INT'), 'Integer');
+      assert.strictEqual(mapSqlTypeToJavaType('int'), 'Integer');
     });
   });
 

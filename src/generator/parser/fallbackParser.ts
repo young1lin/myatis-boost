@@ -168,7 +168,7 @@ function parseColumnDefinition(
   }
 
   // Map to Java type
-  const javaType = mapSqlTypeToJavaType(sqlType, nullable, dbType, dateTimeType);
+  const javaType = mapSqlTypeToJavaType(sqlType, dateTimeType);
 
   return {
     columnName,
