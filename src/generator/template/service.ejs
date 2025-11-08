@@ -1,0 +1,76 @@
+package <%= packageName %>;
+
+<%_ imports.forEach(function(imp) { -%>
+import <%= imp %>;
+<%_ }); -%>
+
+/**
+<%_ if (comment) { _%>  * <%= comment %>
+<%_ } _%> *
+ * @author <%= author %>
+ * @since <%= date %>
+ */
+@Service
+<%_ if (useLombok) { -%>
+@RequiredArgsConstructor
+<%_ } -%>
+public class <%= className %> {
+<%_ if (useLombok) { _%>
+
+    private final <%= mapperClassName %> <%= mapperFieldName %>;
+<%_ } else { _%>
+
+    @Autowired
+    private <%= mapperClassName %> <%= mapperFieldName %>;
+<%_ } _%>
+
+    /**
+     * Query by primary key
+     *
+     * @param id Primary key
+     * @return Entity object
+     */
+    public <%= entityClassName %> getById(Long id) {
+        return <%= mapperFieldName %>.selectById(id);
+    }
+
+    /**
+     * Query all records
+     *
+     * @return List of entities
+     */
+    public List<<%= entityClassName %>> listAll() {
+        return <%= mapperFieldName %>.selectAll();
+    }
+
+    /**
+     * Save entity
+     *
+     * @param entity Entity object
+     * @return true if successful
+     */
+    public boolean save(<%= entityClassName %> entity) {
+        return <%= mapperFieldName %>.insert(entity) > 0;
+    }
+
+    /**
+     * Update by primary key
+     *
+     * @param entity Entity object
+     * @return true if successful
+     */
+    public boolean updateById(<%= entityClassName %> entity) {
+        return <%= mapperFieldName %>.updateById(entity) > 0;
+    }
+
+    /**
+     * Delete by primary key
+     *
+     * @param id Primary key
+     * @return true if successful
+     */
+    public boolean removeById(Long id) {
+        return <%= mapperFieldName %>.deleteById(id) > 0;
+    }
+
+}

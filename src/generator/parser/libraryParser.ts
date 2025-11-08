@@ -4,7 +4,7 @@
 
 import { Parser } from 'sql-ddl-to-json-schema';
 import { ParsedSchema, ColumnInfo, DateTimeType } from '../type';
-import { mapSqlTypeToJavaType, toFullyQualifiedType } from './utils';
+import { mapSqlTypeToJavaType, toFullyQualifiedType, normalizeSqlType } from '../utils';
 
 /**
  * Parse MySQL DDL using sql-ddl-to-json-schema library
@@ -62,18 +62,20 @@ export function parseWithLibrary(
         const isPrimaryKey = columnName === primaryKeyColumn;
 
         // Extract SQL type
-        let sqlType = col.type?.datatype || 'VARCHAR';
+        const sqlType = normalizeSqlType(col.type?.datatype || 'VARCHAR');
+        let typeParams = '';
         if (col.type?.length) {
-          sqlType += `(${col.type.length})`;
+          typeParams = `${col.type.length}`;
         } else if (col.type?.digits) {
-          sqlType += `(${col.type.digits}${col.type.decimals ? `,${col.type.decimals}` : ''})`;
+          typeParams = `${col.type.digits}${col.type.decimals ? `,${col.type.decimals}` : ''}`;
         }
+
 
         // Determine nullability
         const nullable = col.options?.nullable === undefined || col.options?.nullable === true;
 
         // Map to Java type
-        const javaType = mapSqlTypeToJavaType(sqlType, dateTimeType);
+        const javaType = mapSqlTypeToJavaType(sqlType, dateTimeType, typeParams);
         const javaTypeFullName = toFullyQualifiedType(javaType);
 
         // Extract default value
@@ -91,6 +93,7 @@ export function parseWithLibrary(
           columnName,
           sqlType,
           javaType,
+          typeParams,
           javaTypeFullName,
           nullable,
           isPrimaryKey,

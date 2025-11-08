@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="<%= namespace %>">
+
+    <!-- Base Result Map -->
+    <resultMap id="baseResultMap" type="<%= entityClassName %>">
+<%_ fields.forEach(function(field) { -%>
+        <<%= field.isPrimaryKey ? 'id' : 'result' %> column="<%= field.columnName %>" property="<%= field.name %>" jdbcType="<%= field.sqlType %>"/>
+<%_ }); -%>
+    </resultMap>
+
+    <!-- Base Column List -->
+    <sql id="Base_Column_List">
+<%_ fields.forEach(function(field, index) { -%>
+        <%= field.columnName %><%= index < fields.length - 1 ? ',' : '' %>
+<%_ }); -%>
+    </sql>
+
+    <sql id="Insert_Column_List">
+<%_ fields.filter(f => !f.isPrimaryKey).forEach(function(field, index, array) { -%>
+        <%= field.columnName %><%= index < array.length - 1 ? ',' : '' %>
+<%_ }); -%>
+    </sql>
+
+<%_ if (!useMyBatisPlus) { _%>
+    <!-- Select by primary key -->
+    <select id="selectById" resultMap="baseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM <%= tableName %>
+        WHERE <%= primaryKey.columnName %> = #{id}
+    </select>
+
+    <!-- Select all records -->
+    <select id="selectAll" resultMap="baseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM <%= tableName %>
+    </select>
+
+    <!-- Insert record -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="<%= primaryKey.name %>">
+        INSERT INTO <%= tableName %>
+        (
+            <include refid="Insert_Column_List"/>
+        )
+        VALUES
+        (
+<%_ fields.filter(f => !f.isPrimaryKey).forEach(function(field, index, array) { -%>
+            #{<%= field.name %>}<%= index < array.length - 1 ? ',' : '' %>
+<%_ }); -%>
+        )
+    </insert>
+
+    <!-- Update by primary key -->
+    <update id="updateById">
+        UPDATE <%= tableName %>
+        <set>
+<%_ fields.filter(f => !f.isPrimaryKey).forEach(function(field) { -%>
+            <if test="<%= field.name %> != null<% if (field.javaType === 'String') { %> and <%= field.name %> != ''<% } %>">
+                <%= field.columnName %> = #{<%= field.name %>},
+            </if>
+<%_ }); -%>
+        </set>
+        WHERE <%= primaryKey.columnName %> = #{<%= primaryKey.name %>}
+    </update>
+
+    <!-- Delete by primary key -->
+    <delete id="deleteById">
+        DELETE FROM <%= tableName %>
+        WHERE <%= primaryKey.columnName %> = #{id}
+    </delete>
+<%_ } -%>
+</mapper>

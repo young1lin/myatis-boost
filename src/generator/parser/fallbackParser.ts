@@ -3,7 +3,7 @@
  */
 
 import { ParsedSchema, ColumnInfo, DateTimeType } from '../type';
-import { mapSqlTypeToJavaType, toFullyQualifiedType } from './utils';
+import { mapSqlTypeToJavaType, toFullyQualifiedType, normalizeSqlType } from '../utils';
 
 /**
  * Parse DDL using regex-based approach
@@ -160,9 +160,8 @@ function parseColumnDefinition(
     return null;
   }
 
-  const baseType = typeMatch[1];
+  const sqlType = normalizeSqlType(typeMatch[1]);
   const typeParams = typeMatch[2] || '';
-  const sqlType = typeParams ? `${baseType}(${typeParams})` : baseType;
 
   // Check for PRIMARY KEY
   const isPrimaryKey = /PRIMARY\s+KEY/i.test(remaining);
@@ -186,12 +185,13 @@ function parseColumnDefinition(
   }
 
   // Map to Java type
-  const javaType = mapSqlTypeToJavaType(sqlType, dateTimeType);
+  const javaType = mapSqlTypeToJavaType(sqlType, dateTimeType, typeParams);
   const javaTypeFullName = toFullyQualifiedType(javaType);
 
   return {
     columnName,
     sqlType,
+    typeParams,
     javaType,
     javaTypeFullName,
     nullable,

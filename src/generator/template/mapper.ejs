@@ -1,0 +1,59 @@
+package <%= packageName %>;
+
+<%_ imports.forEach(function(imp) { -%>
+import <%= imp %>;
+<%_ }); -%>
+
+/**
+ * <%= className %> Mapper Interface
+ *
+ * @author <%= author %>
+ * @since <%= date %>
+ */
+<%_ if (!useMyBatisPlus) { -%>
+@Mapper
+<%_ } -%>
+public interface <%= className %><% if (useMyBatisPlus) { %> extends BaseMapper<<%= entityClassName %>><% } %> {
+<%_ if (!useMyBatisPlus) { _%>
+
+    /**
+     * Select by primary key
+     *
+     * @param id Primary key
+     * @return Entity object
+     */
+    <%= entityClassName %> selectById(<%= primaryKeyType %> id);
+
+    /**
+     * Select all records
+     *
+     * @return List of entities
+     */
+    List<<%= entityClassName %>> selectAll();
+
+    /**
+     * Insert record
+     *
+     * @param entity Entity object
+     * @return Number of rows affected
+     */
+    int insert(<%= entityClassName %> entity);
+
+    /**
+     * Update by primary key
+     *
+     * @param entity Entity object
+     * @return Number of rows affected
+     */
+    int updateById(<%= entityClassName %> entity);
+
+    /**
+     * Delete by primary key
+     *
+     * @param id Primary key
+     * @return Number of rows affected
+     */
+    int deleteById(<%= primaryKeyType %> id);
+<%_ } -%>
+
+}

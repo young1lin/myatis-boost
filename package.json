@@ -113,6 +113,7 @@
     "release": "node -e \"const v = require('./package.json').version; require('child_process').execSync(`git tag -a v${v} -m \\\"Release ${v}\\\" && git push && git push --tags`, {stdio: 'inherit'})\""
   },
   "devDependencies": {
+    "@types/ejs": "^3.1.5",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/sinon": "^17.0.3",
@@ -131,6 +132,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "ejs": "^3.1.10",
     "sql-ddl-to-json-schema": "6.0.0"
   }
 }

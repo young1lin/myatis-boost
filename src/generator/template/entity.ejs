@@ -1,0 +1,68 @@
+package <%= packageName %>;
+
+<%_ imports.forEach(function(imp) { -%>
+import <%= imp %>;
+<%_ }); -%>
+
+/**
+<%_ if (comment) { -%>
+ * <%= comment %>
+<%_ } -%>
+<%_ if (tableName) { -%>
+ * <%= tableName %>
+<%_ } -%>
+ *
+ * @author <%= author %>
+ * @since <%= date %>
+ */
+<%_ if (useSwagger) { -%>
+<%_ if (useSwaggerV3) { -%>
+@Schema(description = "<%= className %>")
+<%_ } else { -%>
+@ApiModel(value = "<%= className %>")
+<%_ } -%>
+<%_ } -%>
+<%_ if (useMyBatisPlus) { -%>
+@TableName("<%= tableName %>")
+<%_ } -%>
+<%_ if (useLombok) { -%>
+@Data
+<%_ } -%>
+public class <%= className %> {
+<%_ fields.forEach(function(field) { _%>
+
+    /**
+     * <%= field.comment || field.name %>
+     */
+<%_ if (useSwagger) { -%>
+<%_ if (useSwaggerV3) { -%>
+    @Schema(description = "<%= field.comment || field.name %>")
+<%_ } else { -%>
+    @ApiModelProperty(value = "<%= field.comment || field.name %>")
+<%_ } -%>
+<%_ } -%>
+<%_ if (useMyBatisPlus && field.isPrimaryKey) { -%>
+    @TableId(type = IdType.AUTO)
+<%_ } -%>
+<%_ if (useMyBatisPlus) { -%>
+    @TableField("<%= field.columnName %>")
+<%_ } -%>
+    private <%= field.javaType %> <%= field.name %>;
+<%_ }); _%>
+<%_ if (!useLombok) { _%>
+
+<%_ fields.forEach(function(field, index) { _%>
+    public <%= field.javaType %> <%= field.getterName %>() {
+        return this.<%= field.name %>;
+    }
+
+    public void <%= field.setterName %>(<%= field.javaType %> <%= field.name %>) {
+        this.<%= field.name %> = <%= field.name %>;
+    }
+<%_ if (index !== fields.length - 1) { _%>
+<%# Add a blank line only between methods, not after the last one %>
+<%_ } _%>
+<%_ }); _%>
+<%_ } -%>
+
+}

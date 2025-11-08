@@ -2,7 +2,7 @@
  * Utility functions for DDL parsing
  */
 
-import { DateTimeType } from '../type';
+import { DateTimeType, SqlType } from './type';
 
 /**
  * SQL type to Java type mapping (wrapper types only)
@@ -161,23 +161,22 @@ export function snakeToCamel(str: string): string {
  * @returns Java wrapper type string
  */
 export function mapSqlTypeToJavaType(
-  sqlType: string,
-  dateTimeType: DateTimeType = 'LocalDateTime'
+  sqlType: SqlType,
+  dateTimeType: DateTimeType = 'LocalDateTime',
+  typeParams: string | undefined = undefined // TODO complete determine JavaType based on sqlType and typeParams, for example: TINYINT(1) should be Byte or Boolean, TINYINT(2) should be Integer, etc.
 ): string {
-  const normalizedType = sqlType.toUpperCase().replace(/\(.*\)/, '').trim();
-
   // Check date/time types first (dynamic mapping based on configuration)
-  if (DATE_TIME_SQL_TYPES.has(normalizedType)) {
+  if (DATE_TIME_SQL_TYPES.has(sqlType.toString())) {
     return dateTimeType;
   }
 
   // Check time-only types
-  if (TIME_SQL_TYPES.has(normalizedType)) {
+  if (TIME_SQL_TYPES.has(sqlType)) {
     return 'LocalTime';
   }
 
   // Lookup in static mapping
-  const javaType = SQL_TO_JAVA_TYPE_MAP.get(normalizedType);
+  const javaType = SQL_TO_JAVA_TYPE_MAP.get(sqlType);
   if (javaType) {
     return javaType;
   }
@@ -217,11 +216,91 @@ export function toFullyQualifiedType(simpleType: string): string {
 }
 
 /**
- * Normalize SQL type string (extract base type without length/precision)
- * @param sqlType - Raw SQL type from DDL
- * @returns Normalized type string
- * @example normalizeSqlType('VARCHAR(255)') => 'VARCHAR'
+ * Check if a string is a valid SqlType
+ * @param type - Normalized SQL type string
+ * @returns true if the type is a valid SqlType
  */
-export function normalizeSqlType(sqlType: string): string {
-  return sqlType.replace(/\(.*\)/, '').trim().toUpperCase();
+function isValidSqlType(type: string): type is SqlType {
+  const normalizedType = type.toUpperCase().trim();
+
+  // Check all possible SqlType values
+  const validTypes: SqlType[] = [
+    'VARCHAR', 'CHAR', 'TEXT', 'LONGTEXT', 'MEDIUMTEXT', 'TINYTEXT',
+    'VARCHAR2', 'CLOB', 'NVARCHAR', 'NCHAR', 'NCLOB',
+    'TINYINT', 'SMALLINT', 'MEDIUMINT', 'INT', 'INTEGER',
+    'BIGINT', 'SERIAL', 'BIGSERIAL', 'NUMBER',
+    'DECIMAL', 'NUMERIC', 'FLOAT', 'DOUBLE', 'REAL', 'MONEY',
+    'BOOLEAN', 'BOOL', 'BIT',
+    'BLOB', 'BYTEA', 'BINARY', 'VARBINARY', 'RAW', 'LONG RAW',
+    'JSON', 'JSONB',
+    'DATE',
+    'DATETIME', 'TIMESTAMP', 'TIMESTAMP WITH TIME ZONE', 'TIMESTAMP WITHOUT TIME ZONE', 'TIMESTAMPTZ',
+    'TIME', 'TIME WITH TIME ZONE', 'TIME WITHOUT TIME ZONE', 'TIMETZ',
+  ];
+
+  return validTypes.includes(normalizedType as SqlType);
+}
+
+/**
+ * Normalize a SQL type string to its canonical SqlType form (removes length/precision and extra spaces).
+ * @param sqlType - Original SQL type string, e.g. 'VARCHAR(255)', 'decimal(8,2)', 'TIMESTAMP WITHOUT TIME ZONE'
+ * @returns Normalized SqlType (returns 'VARCHAR' if unknown)
+ * @example normalizeSqlType('varchar') => 'VARCHAR'
+ * @example normalizeSqlType('varchar(255)') => 'VARCHAR'
+ * @example normalizeSqlType('decimal(10,2)') => 'DECIMAL'
+ * @example normalizeSqlType('timestamp without time zone') => 'TIMESTAMP WITHOUT TIME ZONE'
+ * @example normalizeSqlType('tinyint(1)') => 'TINYINT'
+ */
+export function normalizeSqlType(sqlType: string): SqlType {
+  if (!sqlType) {
+    return 'VARCHAR';
+  }
+
+  // Extract type name (may contain spaces, e.g. "timestamp without time zone"); remove parameter part.
+  // Match all leading words and spaces, stop at parenthesis.
+  const mainType = sqlType
+    .trim()
+    .toUpperCase()
+    .replace(/^\s+|\s+$/g, '') // Trim leading/trailing whitespace
+    .replace(/\(.+\)$/, '')    // Remove (xxx) parameters
+    .replace(/\s+/, ' ');      // Normalize whitespace to single space
+
+  // Handle multi-word types: try to find the longest valid type match
+  const parts = mainType.split(/\s+/);
+  for (let len = parts.length; len > 0; len--) {
+    const candidate = parts.slice(0, len).join(' ');
+    if (isValidSqlType(candidate)) {
+      return candidate as SqlType;
+    }
+  }
+
+  // Fallback if unrecognized: default to 'VARCHAR'
+  return 'VARCHAR';
+}
+
+/**
+ * Sort imports: java.* > javax.* > third-party > com.baomidou > lombok
+ */
+export function sortImports(imports: Set<string>): string[] {
+  return Array.from(imports).sort((a, b) => {
+    const getOrder = (imp: string): number => {
+      if (imp.startsWith('java.')) { return 1; }
+      if (imp.startsWith('javax.')) { return 2; }
+      if (imp.startsWith('org.apache.ibatis') || imp.startsWith('org.mybatis')) { return 3; }
+      if (imp.startsWith('com.baomidou.mybatisplus')) { return 4; }
+      if (imp.startsWith('org.springframework')) { return 5; }
+      if (imp.startsWith('io.swagger')) { return 6; }
+      if (imp.startsWith('lombok')) { return 7; }
+      return 8;
+    };
+
+    const orderA = getOrder(a);
+    const orderB = getOrder(b);
+
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+
+    return a.localeCompare(b);
+  });
 }
