@@ -123,7 +123,17 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
 
             // Generate code
             const generator = new CodeGenerator(config, parseResult.data);
-            const results = generator.generateAll();
+
+            // Get template directory path (handles both dev and production environments)
+            // In production, templates are copied to dist/generator/template
+            const templateDir = path.join(__dirname, 'generator', 'template');
+
+            const results = [
+                generator.generateEntity(path.join(templateDir, 'entity.ejs')),
+                generator.generateMapper(path.join(templateDir, 'mapper.ejs')),
+                generator.generateMapperXml(path.join(templateDir, 'mapper-xml.ejs')),
+                generator.generateService(path.join(templateDir, 'service.ejs'))
+            ];
 
             // Save history record
             await this._saveHistoryRecord(ddl, results);
