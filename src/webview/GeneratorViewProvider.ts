@@ -30,6 +30,7 @@ interface SettingsConfig {
     entitySuffix: string;
     mapperSuffix: string;
     serviceSuffix: string;
+    datetime: string;
     useLombok: boolean;
     useSwagger: boolean;
     useSwaggerV3: boolean;
@@ -45,26 +46,6 @@ const MAX_HISTORY_SIZE = 30;
  * Storage key for history records in GlobalState
  */
 const HISTORY_STORAGE_KEY = 'mybatis-boost.generator.history';
-
-/**
- * Storage key for settings in GlobalState
- */
-const SETTINGS_STORAGE_KEY = 'mybatis-boost.generator.settings';
-
-/**
- * Default settings configuration
- */
-const DEFAULT_SETTINGS: SettingsConfig = {
-    basePackage: 'com.example.mybatis',
-    author: 'MyBatis Boost',
-    entitySuffix: 'PO',
-    mapperSuffix: 'Mapper',
-    serviceSuffix: 'Service',
-    useLombok: true,
-    useSwagger: false,
-    useSwaggerV3: false,
-    useMyBatisPlus: false
-};
 
 /**
  * WebView Provider for MyBatis Generator sidebar panel
@@ -351,7 +332,7 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
     }
 
     /**
-     * Load settings from GlobalState and send to webview
+     * Load settings from VS Code configuration and send to webview
      */
     private async _handleLoadSettings() {
         const settings = this._getSettings();
@@ -363,17 +344,42 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
     }
 
     /**
-     * Save settings to GlobalState
+     * Save settings to VS Code configuration
      */
     private async _handleSaveSettings(settings: SettingsConfig) {
-        await this._context.globalState.update(SETTINGS_STORAGE_KEY, settings);
+        const config = vscode.workspace.getConfiguration('mybatis-boost.generator');
+
+        // Save each setting to VS Code configuration
+        await config.update('basePackage', settings.basePackage, vscode.ConfigurationTarget.Global);
+        await config.update('author', settings.author, vscode.ConfigurationTarget.Global);
+        await config.update('entitySuffix', settings.entitySuffix, vscode.ConfigurationTarget.Global);
+        await config.update('mapperSuffix', settings.mapperSuffix, vscode.ConfigurationTarget.Global);
+        await config.update('serviceSuffix', settings.serviceSuffix, vscode.ConfigurationTarget.Global);
+        await config.update('datetime', settings.datetime, vscode.ConfigurationTarget.Global);
+        await config.update('useLombok', settings.useLombok, vscode.ConfigurationTarget.Global);
+        await config.update('useSwagger', settings.useSwagger, vscode.ConfigurationTarget.Global);
+        await config.update('useSwaggerV3', settings.useSwaggerV3, vscode.ConfigurationTarget.Global);
+        await config.update('useMyBatisPlus', settings.useMyBatisPlus, vscode.ConfigurationTarget.Global);
     }
 
     /**
-     * Get settings from GlobalState or return defaults
+     * Get settings from VS Code configuration
      */
     private _getSettings(): SettingsConfig {
-        return this._context.globalState.get<SettingsConfig>(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
+        const config = vscode.workspace.getConfiguration('mybatis-boost.generator');
+
+        return {
+            basePackage: config.get<string>('basePackage', 'com.example.mybatis'),
+            author: config.get<string>('author', 'MyBatis Boost'),
+            entitySuffix: config.get<string>('entitySuffix', 'PO'),
+            mapperSuffix: config.get<string>('mapperSuffix', 'Mapper'),
+            serviceSuffix: config.get<string>('serviceSuffix', 'Service'),
+            datetime: config.get<string>('datetime', 'LocalDateTime'),
+            useLombok: config.get<boolean>('useLombok', true),
+            useSwagger: config.get<boolean>('useSwagger', false),
+            useSwaggerV3: config.get<boolean>('useSwaggerV3', false),
+            useMyBatisPlus: config.get<boolean>('useMyBatisPlus', false)
+        };
     }
 
     /**

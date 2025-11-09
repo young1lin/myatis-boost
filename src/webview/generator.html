@@ -508,6 +508,23 @@
             outline-offset: -1px;
         }
 
+        .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: var(--vscode-font-family);
+            cursor: pointer;
+        }
+
+        .form-group select:focus {
+            outline: 2px solid var(--vscode-focusBorder);
+            outline-offset: -1px;
+        }
+
         .form-group small {
             display: block;
             margin-top: 4px;
@@ -662,6 +679,15 @@ CREATE TABLE user_info (
                                    placeholder="Service" required>
                             <small>Suffix for service interfaces (e.g., UserService)</small>
                         </div>
+                        <div class="form-group">
+                            <label for="datetime">DateTime Type</label>
+                            <select id="datetime" name="datetime" required>
+                                <option value="Date">Date</option>
+                                <option value="LocalDateTime">LocalDateTime</option>
+                                <option value="Instant">Instant</option>
+                            </select>
+                            <small>Java type for TIMESTAMP/DATETIME columns</small>
+                        </div>
                     </div>
 
                     <div class="form-section">
@@ -783,6 +809,7 @@ CREATE TABLE user_info (
                 entitySuffix: formData.get('entitySuffix'),
                 mapperSuffix: formData.get('mapperSuffix'),
                 serviceSuffix: formData.get('serviceSuffix'),
+                datetime: formData.get('datetime'),
                 useLombok: document.getElementById('useLombok').checked,
                 useSwagger: document.getElementById('useSwagger').checked,
                 useSwaggerV3: document.getElementById('useSwaggerV3').checked,
@@ -818,6 +845,7 @@ CREATE TABLE user_info (
                     entitySuffix: 'PO',
                     mapperSuffix: 'Mapper',
                     serviceSuffix: 'Service',
+                    datetime: 'LocalDateTime',
                     useLombok: true,
                     useSwagger: false,
                     useSwaggerV3: false,
@@ -832,6 +860,7 @@ CREATE TABLE user_info (
             document.getElementById('entitySuffix').value = settings.entitySuffix || '';
             document.getElementById('mapperSuffix').value = settings.mapperSuffix || '';
             document.getElementById('serviceSuffix').value = settings.serviceSuffix || '';
+            document.getElementById('datetime').value = settings.datetime || 'LocalDateTime';
             document.getElementById('useLombok').checked = settings.useLombok || false;
             document.getElementById('useSwagger').checked = settings.useSwagger || false;
             document.getElementById('useSwaggerV3').checked = settings.useSwaggerV3 || false;
