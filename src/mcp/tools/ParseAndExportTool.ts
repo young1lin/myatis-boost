@@ -1,29 +1,36 @@
 /**
  * Tool: Parse SQL and immediately export (combined operation)
+ * VS Code Language Model Tool implementation
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
-import { parseDDLWithConfig } from '../../generator/vscodeHelper';
-import { CodeGenerator, GeneratorConfig } from '../../generator/template/templateGenerator';
-import { GenerateReuslt } from '../../generator/type';
+import { GeneratorService, GeneratorServiceConfig } from '../core/GeneratorService';
+import { FileExportService, ExportFile } from '../core/FileExportService';
+import { HistoryService, HistoryStorageBackend, HistoryRecord } from '../core/HistoryService';
 
 interface ParseAndExportInput {
     ddl: string;
 }
 
 /**
- * History record structure
+ * VS Code GlobalState history storage backend
  */
-interface HistoryRecord {
-    timestamp: number;
-    ddl: string;
-    results: GenerateReuslt[];
-}
+class VSCodeHistoryStorage implements HistoryStorageBackend {
+    private static readonly STORAGE_KEY = 'mybatis-boost.mcp.history';
+    private context: vscode.ExtensionContext;
 
-const MAX_HISTORY_SIZE = 30;
-const MCP_HISTORY_STORAGE_KEY = 'mybatis-boost.mcp.history';
+    constructor(context: vscode.ExtensionContext) {
+        this.context = context;
+    }
+
+    getHistory(): HistoryRecord[] {
+        return this.context.globalState.get<HistoryRecord[]>(VSCodeHistoryStorage.STORAGE_KEY, []);
+    }
+
+    async saveHistory(history: HistoryRecord[]): Promise<void> {
+        await this.context.globalState.update(VSCodeHistoryStorage.STORAGE_KEY, history);
+    }
+}
 
 /**
  * Tool for parsing SQL and immediately exporting files (combined operation)
@@ -31,9 +38,11 @@ const MCP_HISTORY_STORAGE_KEY = 'mybatis-boost.mcp.history';
 export class ParseAndExportTool implements vscode.LanguageModelTool<ParseAndExportInput> {
 
     private context: vscode.ExtensionContext;
+    private historyStorage: VSCodeHistoryStorage;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
+        this.historyStorage = new VSCodeHistoryStorage(context);
     }
 
     async invoke(
@@ -47,77 +56,48 @@ export class ParseAndExportTool implements vscode.LanguageModelTool<ParseAndExpo
 
         const { ddl } = options.input;
 
-        try {
-            // Step 1: Parse DDL
-            const parseResult = parseDDLWithConfig(ddl);
+        // Load configuration
+        const config = this.loadConfiguration();
 
-            if (!parseResult.success || !parseResult.data) {
-                return new vscode.LanguageModelToolResult([
-                    new vscode.LanguageModelTextPart(JSON.stringify({
-                        success: false,
-                        error: parseResult.error?.message || 'Failed to parse DDL'
-                    }, null, 2))
-                ]);
-            }
+        // Step 1: Parse and generate
+        const generateResult = GeneratorService.parseSqlAndGenerate(ddl, config);
 
-            // Load configuration
-            const config = this.loadConfiguration();
-
-            // Step 2: Generate code
-            const generator = new CodeGenerator(config, parseResult.data);
-
-            const templateDir = path.join(__dirname, '..', '..', 'generator', 'template');
-
-            const results = [
-                generator.generateEntity(path.join(templateDir, 'entity.ejs')),
-                generator.generateMapper(path.join(templateDir, 'mapper.ejs')),
-                generator.generateMapperXml(path.join(templateDir, 'mapper-xml.ejs')),
-                generator.generateService(path.join(templateDir, 'service.ejs'))
-            ];
-
-            // Step 3: Export files
-            const exportedFiles: string[] = [];
-
-            for (const result of results) {
-                // Ensure directory exists
-                const dir = path.dirname(result.outputPath);
-                await fs.promises.mkdir(dir, { recursive: true });
-
-                // Write file
-                await fs.promises.writeFile(result.outputPath, result.content, 'utf-8');
-                exportedFiles.push(result.outputPath);
-            }
-
-            // Step 4: Save to history
-            await this.saveHistoryRecord(ddl, results);
-
-            // Show success notification
-            vscode.window.showInformationMessage(
-                `Successfully parsed and exported ${results.length} files via Language Model Tool`
-            );
-
-            return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart(JSON.stringify({
-                    success: true,
-                    exportedFiles,
-                    message: `Successfully parsed and exported ${results.length} files`
-                }, null, 2))
-            ]);
-
-        } catch (error) {
+        if (!generateResult.success || !generateResult.results) {
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(JSON.stringify({
                     success: false,
-                    error: error instanceof Error ? error.message : 'Unknown error occurred'
+                    error: generateResult.error
                 }, null, 2))
             ]);
         }
+
+        // Step 2: Export files
+        const exportResult = await FileExportService.exportFiles(generateResult.results as ExportFile[]);
+
+        if (exportResult.success) {
+            // Save to history
+            await HistoryService.saveHistoryRecord(this.historyStorage, ddl, generateResult.results);
+
+            // Show success notification
+            vscode.window.showInformationMessage(
+                `Successfully parsed and exported ${generateResult.results.length} files via Language Model Tool`
+            );
+        }
+
+        return new vscode.LanguageModelToolResult([
+            new vscode.LanguageModelTextPart(JSON.stringify({
+                ...exportResult,
+                message: exportResult.success
+                    ? `Successfully parsed and exported ${generateResult.results.length} files`
+                    : exportResult.error
+            }, null, 2))
+        ]);
     }
 
     /**
      * Load configuration from VS Code settings
      */
-    private loadConfiguration(): GeneratorConfig {
+    private loadConfiguration(): GeneratorServiceConfig {
         const config = vscode.workspace.getConfiguration('mybatis-boost.generator');
 
         const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -135,35 +115,8 @@ export class ParseAndExportTool implements vscode.LanguageModelTool<ParseAndExpo
             useMyBatisPlus: config.get<boolean>('useMyBatisPlus', false),
             entitySuffix: config.get<string>('entitySuffix', 'PO'),
             mapperSuffix: config.get<string>('mapperSuffix', 'Mapper'),
-            serviceSuffix: config.get<string>('serviceSuffix', 'Service')
+            serviceSuffix: config.get<string>('serviceSuffix', 'Service'),
+            datetime: config.get<'Date' | 'LocalDateTime' | 'Instant'>('datetime', 'LocalDateTime')
         };
-    }
-
-    /**
-     * Save history record to GlobalState
-     */
-    private async saveHistoryRecord(ddl: string, results: GenerateReuslt[]): Promise<void> {
-        let history = this.getHistory();
-
-        // Add new record
-        history.unshift({
-            timestamp: Date.now(),
-            ddl,
-            results
-        });
-
-        // Keep only latest MAX_HISTORY_SIZE records
-        if (history.length > MAX_HISTORY_SIZE) {
-            history = history.slice(0, MAX_HISTORY_SIZE);
-        }
-
-        await this.context.globalState.update(MCP_HISTORY_STORAGE_KEY, history);
-    }
-
-    /**
-     * Get history records from GlobalState
-     */
-    private getHistory(): HistoryRecord[] {
-        return this.context.globalState.get<HistoryRecord[]>(MCP_HISTORY_STORAGE_KEY, []);
     }
 }

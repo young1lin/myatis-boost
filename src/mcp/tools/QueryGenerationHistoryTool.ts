@@ -1,25 +1,34 @@
 /**
  * Tool: Query generation history
+ * VS Code Language Model Tool implementation
  */
 
 import * as vscode from 'vscode';
-import { GenerateReuslt } from '../../generator/type';
+import { HistoryService, HistoryStorageBackend, HistoryRecord } from '../core/HistoryService';
 
 interface QueryHistoryInput {
     limit?: number;
 }
 
 /**
- * History record structure
+ * VS Code GlobalState history storage backend
  */
-interface HistoryRecord {
-    timestamp: number;
-    ddl: string;
-    results: GenerateReuslt[];
-}
+class VSCodeHistoryStorage implements HistoryStorageBackend {
+    private static readonly STORAGE_KEY = 'mybatis-boost.mcp.history';
+    private context: vscode.ExtensionContext;
 
-const MAX_HISTORY_SIZE = 30;
-const MCP_HISTORY_STORAGE_KEY = 'mybatis-boost.mcp.history';
+    constructor(context: vscode.ExtensionContext) {
+        this.context = context;
+    }
+
+    getHistory(): HistoryRecord[] {
+        return this.context.globalState.get<HistoryRecord[]>(VSCodeHistoryStorage.STORAGE_KEY, []);
+    }
+
+    async saveHistory(history: HistoryRecord[]): Promise<void> {
+        await this.context.globalState.update(VSCodeHistoryStorage.STORAGE_KEY, history);
+    }
+}
 
 /**
  * Tool for querying generation history
@@ -27,9 +36,11 @@ const MCP_HISTORY_STORAGE_KEY = 'mybatis-boost.mcp.history';
 export class QueryGenerationHistoryTool implements vscode.LanguageModelTool<QueryHistoryInput> {
 
     private context: vscode.ExtensionContext;
+    private historyStorage: VSCodeHistoryStorage;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
+        this.historyStorage = new VSCodeHistoryStorage(context);
     }
 
     async invoke(
@@ -41,37 +52,13 @@ export class QueryGenerationHistoryTool implements vscode.LanguageModelTool<Quer
             throw new Error('Operation cancelled');
         }
 
-        const limit = Math.min(options.input.limit || 10, MAX_HISTORY_SIZE);
-        const history = this.getHistory();
-        const limitedHistory = history.slice(0, limit);
+        const limit = options.input.limit || 10;
 
-        const historyData = limitedHistory.map(record => ({
-            timestamp: record.timestamp,
-            timestampFormatted: new Date(record.timestamp).toISOString(),
-            ddl: record.ddl,
-            filesCount: record.results.length,
-            files: record.results.map(r => ({
-                name: r.name,
-                outputPath: r.outputPath,
-                type: r.type,
-                contentPreview: r.content.substring(0, 200) + '...'
-            }))
-        }));
+        // Query history using service
+        const result = HistoryService.queryHistory(this.historyStorage, limit);
 
         return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(JSON.stringify({
-                success: true,
-                totalRecords: history.length,
-                returnedRecords: limitedHistory.length,
-                history: historyData
-            }, null, 2))
+            new vscode.LanguageModelTextPart(JSON.stringify(result, null, 2))
         ]);
-    }
-
-    /**
-     * Get history records from GlobalState
-     */
-    private getHistory(): HistoryRecord[] {
-        return this.context.globalState.get<HistoryRecord[]>(MCP_HISTORY_STORAGE_KEY, []);
     }
 }
