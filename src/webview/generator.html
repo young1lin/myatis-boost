@@ -615,14 +615,21 @@ CREATE TABLE user_info (
             closePreview();
             showStatus('success', '⏳', 'Exporting files...');
 
-            const exportData = {
+            // Create a clean, serializable copy of results
+            const serializableResults = currentPreviewResults.map(file => ({
+                name: file.name,
+                outputPath: file.outputPath,
+                content: file.content,
+                type: file.type
+            }));
+
+            console.log('[WebView Export] Serializable results:', serializableResults);
+
+            vscode.postMessage({
                 type: 'export',
                 ddl: ddlInput.value.trim(),
-                results: currentPreviewResults
-            };
-
-            console.log('[WebView Export] Sending message:', exportData);
-            vscode.postMessage(exportData);
+                results: serializableResults
+            });
         });
 
         // Close modal when clicking overlay
