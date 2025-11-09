@@ -334,9 +334,17 @@ CREATE TABLE user_info (
         const resultMessage = document.getElementById('resultMessage');
         const resultFiles = document.getElementById('resultFiles');
 
+        console.log('[WebView] Elements loaded:', {
+            newBtn: !!newBtn,
+            historyBtn: !!historyBtn,
+            clearHistoryBtn: !!clearHistoryBtn,
+            generateBtn: !!generateBtn
+        });
+
         let historyVisible = false;
 
         // New button - clear input and start new session
+        console.log('[WebView] Adding event listener for newBtn');
         newBtn.addEventListener('click', () => {
             ddlInput.value = '';
             resultSection.classList.remove('visible');
@@ -344,6 +352,7 @@ CREATE TABLE user_info (
         });
 
         // History button - toggle history section
+        console.log('[WebView] Adding event listener for historyBtn');
         historyBtn.addEventListener('click', () => {
             historyVisible = !historyVisible;
             if (historyVisible) {
@@ -355,6 +364,7 @@ CREATE TABLE user_info (
         });
 
         // Clear history button - confirm and clear all history
+        console.log('[WebView] Adding event listener for clearHistoryBtn');
         clearHistoryBtn.addEventListener('click', () => {
             console.log('[WebView] Clear History button clicked');
             const confirmed = confirm('Are you sure you want to clear all history records? This action cannot be undone.');
@@ -369,6 +379,7 @@ CREATE TABLE user_info (
         });
 
         // Generate button - trigger code generation
+        console.log('[WebView] Adding event listener for generateBtn');
         generateBtn.addEventListener('click', () => {
             const ddl = ddlInput.value.trim();
             if (!ddl) {
