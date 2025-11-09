@@ -4,7 +4,12 @@ English | [简体中文](README.zh-cn.md)
 
 High-performance VS Code extension providing comprehensive bidirectional navigation between MyBatis mapper interfaces (Java) and XML mapping files. Features 10 types of Go-to-Definition navigation, real-time parameter validation, visual binding indicators, and flexible navigation modes. Achieve sub-100ms navigation latency through LRU caching, file watchers, and optimized parsing.
 
+Navigation
 ![demo](images/demo.gif)
+
+Support Cusror IDE MCP, VSCode Copilot! Generate MyBatis content with MCP.
+![mcp](images/mcp.gif)
+
 ## Features
 
 ### 🎯 MyBatis Code Generator

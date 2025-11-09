@@ -4,7 +4,12 @@
 
 MyBatis 映射器接口（Java）与 XML 映射文件之间的高性能双向导航 VS Code 扩展。提供 10 种跳转到定义的导航方式、实时参数验证、可视化绑定指示器和灵活的导航模式。通过 LRU 缓存、文件监视器和优化解析，实现低于 100 毫秒的导航延迟。
 
+导航
 ![demo](images/demo.gif)
+
+支持 Cusror IDE MCP, VSCode Copilot! 生成 MyBatis 内容，结合 MCP。
+![mcp](images/mcp.gif)
+
 ## 功能特性
 
 ### 🎯 MyBatis 代码生成器
