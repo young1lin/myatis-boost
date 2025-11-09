@@ -22,6 +22,12 @@ import { XmlSqlHoverProvider, JavaSqlHoverProvider } from './hover';
 import { MybatisBindingDecorator } from './decorator';
 import { findProjectFileInParents } from './utils/projectDetector';
 import { GeneratorViewProvider } from './webview/GeneratorViewProvider';
+import {
+    ParseSqlAndGenerateTool,
+    ExportGeneratedFilesTool,
+    QueryGenerationHistoryTool,
+    ParseAndExportTool
+} from './mcp';
 
 let fileMapper: FileMapper;
 let bindingDecorator: MybatisBindingDecorator;
@@ -44,6 +50,20 @@ export async function activate(context: vscode.ExtensionContext) {
         )
     );
     console.log('[MyBatis Boost] Generator WebView Provider registered');
+
+    // Register Language Model Tools for AI-powered code generation (always available)
+    try {
+        context.subscriptions.push(
+            vscode.lm.registerTool('mybatis_parse_sql_and_generate', new ParseSqlAndGenerateTool(context)),
+            vscode.lm.registerTool('mybatis_export_generated_files', new ExportGeneratedFilesTool(context)),
+            vscode.lm.registerTool('mybatis_query_generation_history', new QueryGenerationHistoryTool(context)),
+            vscode.lm.registerTool('mybatis_parse_and_export', new ParseAndExportTool(context))
+        );
+        console.log('[MyBatis Boost] Language Model Tools registered (4 tools)');
+    } catch (error) {
+        console.warn('[MyBatis Boost] Failed to register Language Model Tools:', error);
+        // Non-critical error - extension can still function without these tools
+    }
 
     // Register commands first (always available)
     registerCommands(context);
