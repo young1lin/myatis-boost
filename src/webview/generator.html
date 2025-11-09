@@ -612,11 +612,14 @@ CREATE TABLE user_info (
             console.log('[WebView Export] Is array:', Array.isArray(currentPreviewResults));
             console.log('[WebView Export] Length:', currentPreviewResults.length);
 
+            // Save reference BEFORE closing preview (closePreview sets currentPreviewResults to null)
+            const resultsToExport = currentPreviewResults;
+
             closePreview();
             showStatus('success', '⏳', 'Exporting files...');
 
             // Create a clean, serializable copy of results
-            const serializableResults = currentPreviewResults.map(file => ({
+            const serializableResults = resultsToExport.map(file => ({
                 name: file.name,
                 outputPath: file.outputPath,
                 content: file.content,
