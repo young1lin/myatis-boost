@@ -37,7 +37,7 @@ jobs:
         run: pnpm add -g @vscode/vsce
 
       - name: Package extension as VSIX file
-        run: vsce package
+        run: vsce package --no-dependencies
 
       - name: Get VSIX filename
         id: get_vsix
