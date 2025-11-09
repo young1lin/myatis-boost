@@ -195,6 +195,20 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
         console.log('[GeneratorViewProvider] _handleClearHistory called');
         console.log('[GeneratorViewProvider] Current history before clear:', this._getHistory());
 
+        // Show confirmation dialog (VS Code native, not blocked by sandbox)
+        const confirmed = await vscode.window.showWarningMessage(
+            'Are you sure you want to clear all history records? This action cannot be undone.',
+            { modal: true },
+            'Clear History'
+        );
+
+        console.log('[GeneratorViewProvider] User confirmation result:', confirmed);
+
+        if (confirmed !== 'Clear History') {
+            console.log('[GeneratorViewProvider] User cancelled clear history');
+            return;
+        }
+
         await this._context.globalState.update(HISTORY_STORAGE_KEY, []);
         console.log('[GeneratorViewProvider] GlobalState updated to empty array');
 

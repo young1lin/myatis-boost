@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src {{cspSource}}; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}';">
     <title>MyBatis Generator</title>
     <style>
         * {
@@ -363,19 +363,12 @@ CREATE TABLE user_info (
             }
         });
 
-        // Clear history button - confirm and clear all history
+        // Clear history button - send request to backend for confirmation
         console.log('[WebView] Adding event listener for clearHistoryBtn');
         clearHistoryBtn.addEventListener('click', () => {
             console.log('[WebView] Clear History button clicked');
-            const confirmed = confirm('Are you sure you want to clear all history records? This action cannot be undone.');
-            console.log('[WebView] Confirmation result:', confirmed);
-            if (confirmed) {
-                console.log('[WebView] Sending clearHistory message');
-                vscode.postMessage({ type: 'clearHistory' });
-                console.log('[WebView] clearHistory message sent');
-            } else {
-                console.log('[WebView] User cancelled clear history');
-            }
+            console.log('[WebView] Sending clearHistory message (backend will confirm)');
+            vscode.postMessage({ type: 'clearHistory' });
         });
 
         // Generate button - trigger code generation
