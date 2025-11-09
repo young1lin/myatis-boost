@@ -21,6 +21,22 @@ interface HistoryRecord {
 }
 
 /**
+ * Settings configuration structure
+ * Stores user preferences for code generation
+ */
+interface SettingsConfig {
+    basePackage: string;
+    author: string;
+    entitySuffix: string;
+    mapperSuffix: string;
+    serviceSuffix: string;
+    useLombok: boolean;
+    useSwagger: boolean;
+    useSwaggerV3: boolean;
+    useMyBatisPlus: boolean;
+}
+
+/**
  * Maximum number of history records to store
  */
 const MAX_HISTORY_SIZE = 30;
@@ -29,6 +45,26 @@ const MAX_HISTORY_SIZE = 30;
  * Storage key for history records in GlobalState
  */
 const HISTORY_STORAGE_KEY = 'mybatis-boost.generator.history';
+
+/**
+ * Storage key for settings in GlobalState
+ */
+const SETTINGS_STORAGE_KEY = 'mybatis-boost.generator.settings';
+
+/**
+ * Default settings configuration
+ */
+const DEFAULT_SETTINGS: SettingsConfig = {
+    basePackage: 'com.example.mybatis',
+    author: 'MyBatis Boost',
+    entitySuffix: 'PO',
+    mapperSuffix: 'Mapper',
+    serviceSuffix: 'Service',
+    useLombok: true,
+    useSwagger: false,
+    useSwaggerV3: false,
+    useMyBatisPlus: false
+};
 
 /**
  * WebView Provider for MyBatis Generator sidebar panel
@@ -79,6 +115,12 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
                 case 'clearHistory':
                     await this._handleClearHistory();
                     break;
+                case 'loadSettings':
+                    await this._handleLoadSettings();
+                    break;
+                case 'saveSettings':
+                    await this._handleSaveSettings(data.settings);
+                    break;
             }
         });
     }
@@ -113,18 +155,19 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
 
             const outputDir = workspaceFolders[0].uri.fsPath;
 
-            // Hardcoded generator configuration (MVP)
+            // Load user settings or use defaults
+            const settings = this._getSettings();
             const config: GeneratorConfig = {
-                basePackage: 'com.example.mybatis',
-                author: 'MyBatis Boost',
+                basePackage: settings.basePackage,
+                author: settings.author,
                 outputDir: outputDir,
-                useLombok: true,
-                useSwagger: false,
-                useSwaggerV3: false,
-                useMyBatisPlus: false,
-                entitySuffix: 'PO',
-                mapperSuffix: 'Mapper',
-                serviceSuffix: 'Service'
+                useLombok: settings.useLombok,
+                useSwagger: settings.useSwagger,
+                useSwaggerV3: settings.useSwaggerV3,
+                useMyBatisPlus: settings.useMyBatisPlus,
+                entitySuffix: settings.entitySuffix,
+                mapperSuffix: settings.mapperSuffix,
+                serviceSuffix: settings.serviceSuffix
             };
 
             // Generate code (in memory only, don't write files yet)
@@ -305,6 +348,32 @@ export class GeneratorViewProvider implements vscode.WebviewViewProvider {
      */
     private _getHistory(): HistoryRecord[] {
         return this._context.globalState.get<HistoryRecord[]>(HISTORY_STORAGE_KEY, []);
+    }
+
+    /**
+     * Load settings from GlobalState and send to webview
+     */
+    private async _handleLoadSettings() {
+        const settings = this._getSettings();
+
+        this._view?.webview.postMessage({
+            type: 'settingsLoaded',
+            settings: settings
+        });
+    }
+
+    /**
+     * Save settings to GlobalState
+     */
+    private async _handleSaveSettings(settings: SettingsConfig) {
+        await this._context.globalState.update(SETTINGS_STORAGE_KEY, settings);
+    }
+
+    /**
+     * Get settings from GlobalState or return defaults
+     */
+    private _getSettings(): SettingsConfig {
+        return this._context.globalState.get<SettingsConfig>(SETTINGS_STORAGE_KEY, DEFAULT_SETTINGS);
     }
 
     /**

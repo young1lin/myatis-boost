@@ -456,6 +456,88 @@
             flex: 1;
             font-size: 13px;
         }
+
+        /* Settings Form Styles */
+        .form-section {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--vscode-panel-border);
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .form-section h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--vscode-foreground);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--vscode-foreground);
+        }
+
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 8px 12px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: var(--vscode-font-family);
+        }
+
+        .form-group input[type="text"]:focus {
+            outline: 2px solid var(--vscode-focusBorder);
+            outline-offset: -1px;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-weight: normal;
+            margin-bottom: 4px;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            margin-right: 8px;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-label span {
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
@@ -476,6 +558,10 @@
             <button id="historyBtn" class="secondary">
                 <span>🕐</span>
                 <span>History</span>
+            </button>
+            <button id="settingsBtn" class="secondary">
+                <span>⚙️</span>
+                <span>Settings</span>
             </button>
             <button id="clearHistoryBtn" class="danger">
                 <span>🗑️</span>
@@ -531,12 +617,103 @@ CREATE TABLE user_info (
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Generator Settings</h2>
+                <button class="modal-close" id="settingsModalClose">✕</button>
+            </div>
+            <div class="modal-body" id="settingsBody">
+                <form id="settingsForm">
+                    <div class="form-section">
+                        <h3>Package Configuration</h3>
+                        <div class="form-group">
+                            <label for="basePackage">Base Package</label>
+                            <input type="text" id="basePackage" name="basePackage"
+                                   placeholder="com.example.mybatis" required>
+                            <small>Java package name for generated code</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="author">Author</label>
+                            <input type="text" id="author" name="author"
+                                   placeholder="Your Name" required>
+                            <small>Author name in generated file headers</small>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Class Suffix Configuration</h3>
+                        <div class="form-group">
+                            <label for="entitySuffix">Entity Suffix</label>
+                            <input type="text" id="entitySuffix" name="entitySuffix"
+                                   placeholder="PO" required>
+                            <small>Suffix for entity classes (e.g., UserPO)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="mapperSuffix">Mapper Suffix</label>
+                            <input type="text" id="mapperSuffix" name="mapperSuffix"
+                                   placeholder="Mapper" required>
+                            <small>Suffix for mapper interfaces (e.g., UserMapper)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="serviceSuffix">Service Suffix</label>
+                            <input type="text" id="serviceSuffix" name="serviceSuffix"
+                                   placeholder="Service" required>
+                            <small>Suffix for service interfaces (e.g., UserService)</small>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Feature Options</h3>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useLombok" name="useLombok">
+                                <span>Use Lombok</span>
+                            </label>
+                            <small>Generate @Data, @Builder annotations</small>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useSwagger" name="useSwagger">
+                                <span>Use Swagger (v2)</span>
+                            </label>
+                            <small>Generate @ApiModel, @ApiModelProperty annotations</small>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useSwaggerV3" name="useSwaggerV3">
+                                <span>Use Swagger (v3/OpenAPI)</span>
+                            </label>
+                            <small>Generate @Schema annotations</small>
+                        </div>
+                        <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="useMyBatisPlus" name="useMyBatisPlus">
+                                <span>Use MyBatis Plus</span>
+                            </label>
+                            <small>Generate MyBatis Plus annotations</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button id="settingsCancelBtn" class="secondary">Cancel</button>
+                <button id="settingsSaveBtn" class="primary">
+                    <span>💾</span>
+                    <span>Save Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script nonce="{{nonce}}">
         const vscode = acquireVsCodeApi();
 
         // DOM elements
         const newBtn = document.getElementById('newBtn');
         const historyBtn = document.getElementById('historyBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
         const clearHistoryBtn = document.getElementById('clearHistoryBtn');
         const historySection = document.getElementById('historySection');
         const historyList = document.getElementById('historyList');
@@ -546,15 +723,23 @@ CREATE TABLE user_info (
         const statusIcon = document.getElementById('statusIcon');
         const statusText = document.getElementById('statusText');
 
-        // Modal elements
+        // Preview Modal elements
         const previewModal = document.getElementById('previewModal');
         const previewBody = document.getElementById('previewBody');
         const modalClose = document.getElementById('modalClose');
         const cancelBtn = document.getElementById('cancelBtn');
         const exportBtn = document.getElementById('exportBtn');
 
+        // Settings Modal elements
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsModalClose = document.getElementById('settingsModalClose');
+        const settingsForm = document.getElementById('settingsForm');
+        const settingsSaveBtn = document.getElementById('settingsSaveBtn');
+        const settingsCancelBtn = document.getElementById('settingsCancelBtn');
+
         let historyVisible = false;
         let currentPreviewResults = null;
+        let currentSettings = null;
 
         // New button - clear input and start new session
         newBtn.addEventListener('click', () => {
@@ -578,6 +763,80 @@ CREATE TABLE user_info (
         clearHistoryBtn.addEventListener('click', () => {
             vscode.postMessage({ type: 'clearHistory' });
         });
+
+        // Settings button - open settings modal
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('visible');
+            vscode.postMessage({ type: 'loadSettings' });
+        });
+
+        // Settings modal close buttons
+        settingsModalClose.addEventListener('click', closeSettings);
+        settingsCancelBtn.addEventListener('click', closeSettings);
+
+        // Settings save button
+        settingsSaveBtn.addEventListener('click', () => {
+            const formData = new FormData(settingsForm);
+            const settings = {
+                basePackage: formData.get('basePackage'),
+                author: formData.get('author'),
+                entitySuffix: formData.get('entitySuffix'),
+                mapperSuffix: formData.get('mapperSuffix'),
+                serviceSuffix: formData.get('serviceSuffix'),
+                useLombok: document.getElementById('useLombok').checked,
+                useSwagger: document.getElementById('useSwagger').checked,
+                useSwaggerV3: document.getElementById('useSwaggerV3').checked,
+                useMyBatisPlus: document.getElementById('useMyBatisPlus').checked
+            };
+
+            vscode.postMessage({
+                type: 'saveSettings',
+                settings: settings
+            });
+
+            closeSettings();
+            showStatus('success', '✅', 'Settings saved successfully');
+        });
+
+        // Close settings modal when clicking overlay
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                closeSettings();
+            }
+        });
+
+        function closeSettings() {
+            settingsModal.classList.remove('visible');
+        }
+
+        function loadSettingsToForm(settings) {
+            if (!settings) {
+                // Load defaults
+                settings = {
+                    basePackage: 'com.example.mybatis',
+                    author: 'MyBatis Boost',
+                    entitySuffix: 'PO',
+                    mapperSuffix: 'Mapper',
+                    serviceSuffix: 'Service',
+                    useLombok: true,
+                    useSwagger: false,
+                    useSwaggerV3: false,
+                    useMyBatisPlus: false
+                };
+            }
+
+            currentSettings = settings;
+
+            document.getElementById('basePackage').value = settings.basePackage || '';
+            document.getElementById('author').value = settings.author || '';
+            document.getElementById('entitySuffix').value = settings.entitySuffix || '';
+            document.getElementById('mapperSuffix').value = settings.mapperSuffix || '';
+            document.getElementById('serviceSuffix').value = settings.serviceSuffix || '';
+            document.getElementById('useLombok').checked = settings.useLombok || false;
+            document.getElementById('useSwagger').checked = settings.useSwagger || false;
+            document.getElementById('useSwaggerV3').checked = settings.useSwaggerV3 || false;
+            document.getElementById('useMyBatisPlus').checked = settings.useMyBatisPlus || false;
+        }
 
         // Generate button - show preview
         generateBtn.addEventListener('click', () => {
@@ -719,6 +978,10 @@ CREATE TABLE user_info (
                     if (historyVisible) {
                         historyList.innerHTML = '<div class="empty-state">No history records</div>';
                     }
+                    break;
+
+                case 'settingsLoaded':
+                    loadSettingsToForm(message.settings);
                     break;
             }
         });
