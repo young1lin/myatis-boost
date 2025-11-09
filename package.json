@@ -154,6 +154,11 @@
           "type": "boolean",
           "default": false,
           "description": "%config.generator.useMyBatisPlus.description%"
+        },
+        "mybatis-boost.mcp.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "%config.mcp.enable.description%"
         }
       }
     }
