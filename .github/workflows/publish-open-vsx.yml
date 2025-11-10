@@ -1,47 +1,50 @@
 name: Publish to Open VSX Registry
+
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Build Extension"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to publish (e.g., 0.2.0)'
-        required: false
+      tag:
+        description: 'Tag version to publish (e.g., v0.2.2)'
+        required: true
         type: string
 
 jobs:
-  build-and-publish:
+  publish-openvsx:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.19.0
+      - name: Determine tag
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag }}"
+          else
+            TAG=$(echo ${{ github.event.workflow_run.head_branch }} | grep -oP 'v[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+          fi
 
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-          cache: 'pnpm'
+          if [ -z "$TAG" ]; then
+            echo "No valid tag found, trying to get from latest release"
+            TAG=$(gh release list --limit 1 | awk '{print $1}')
+          fi
 
-      - name: Install dependencies
-        run: pnpm install
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Publishing tag: $TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compile project
-        run: pnpm run compile
-
-      - name: Install vsce and ovsx
-        run: pnpm add -g @vscode/vsce ovsx
-
-      - name: Package extension as VSIX file
-        run: vsce package --no-dependencies
+      - name: Download VSIX from Release
+        run: |
+          gh release download ${{ steps.get_tag.outputs.tag }} --pattern "*.vsix"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get VSIX filename
         id: get_vsix
@@ -50,12 +53,8 @@ jobs:
           echo "vsix_file=$VSIX_FILE" >> $GITHUB_OUTPUT
           echo "Found VSIX file: $VSIX_FILE"
 
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.get_vsix.outputs.vsix_file }}
-          generate_release_notes: true
+      - name: Install ovsx
+        run: npm install -g ovsx
 
       - name: Publish to Open VSX Registry
         run: ovsx publish ${{ steps.get_vsix.outputs.vsix_file }} -p ${{ secrets.OPEN_VSX_TOKEN }}
