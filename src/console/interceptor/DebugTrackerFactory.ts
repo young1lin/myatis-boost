@@ -79,8 +79,21 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
             return;
         }
 
+        // Log first 10 lines to help diagnose format issues
+        if (this.lineCount < 10) {
+            this.lineCount++;
+            console.log(`[MyBatis Console] Raw line ${this.lineCount}: ${line.substring(0, 150)}`);
+        }
+
         // Check if it's a MyBatis log line
-        if (!LogParser.isMyBatisLog(line)) {
+        const isMyBatis = LogParser.isMyBatisLog(line);
+
+        // Log detection result for first few potential MyBatis lines
+        if (this.lineCount <= 10 && (line.includes('Preparing') || line.includes('Parameters') || line.includes('Total'))) {
+            console.log(`[MyBatis Console] Line contains MyBatis keyword, isMyBatis=${isMyBatis}`);
+        }
+
+        if (!isMyBatis) {
             return;
         }
 
@@ -93,6 +106,7 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
         // Parse the log line
         const entry = LogParser.parse(line);
         if (!entry) {
+            console.log('[MyBatis Console] Failed to parse MyBatis log');
             return;
         }
 
@@ -127,6 +141,7 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     }
 
     private hasDetectedMyBatis = false;
+    private lineCount = 0;
 
     /**
      * Convert SQL and output to channel
