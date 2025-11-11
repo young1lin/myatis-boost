@@ -22,7 +22,8 @@ export class SqlOutputChannel {
      * Show converted SQL in output channel
      */
     public show(result: ConvertedSql): void {
-        this.outputChannel.show(true); // Preserve focus
+        // Don't auto-show the output channel - let users manually open it if needed
+        // this.outputChannel.show(true);
 
         const lines: string[] = [];
 
