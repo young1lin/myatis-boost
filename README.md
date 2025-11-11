@@ -12,6 +12,56 @@ Support Cusror IDE MCP, VSCode Copilot! Generate MyBatis content with MCP.
 
 ## Features
 
+### 🖥️ SQL Console Interceptor (NEW in v0.3.0)
+
+Automatically intercepts and displays MyBatis SQL logs from your application's debug console with real-time SQL composition and export capabilities.
+
+**How it works:**
+- Monitors debug console output for MyBatis log entries
+- Parses SQL statements (`Preparing:`) and parameters (`Parameters:`)
+- Matches statements with their parameters using thread-based session tracking
+- Converts parametrized SQL (`?` placeholders) to executable SQL with actual values
+- Displays composed SQL in dedicated "MyBatis SQL Output" channel
+
+**Key Features:**
+- ✅ **Real-time SQL logging**: See actual SQL as your application runs
+- ✅ **SQL Export**: Copy composed SQL to clipboard or export to file for database execution
+- ✅ **Multi-database support**: Auto-detects MySQL, PostgreSQL, Oracle, SQL Server
+- ✅ **Database-specific syntax**: Converts SQL to proper dialect (identifiers, pagination, etc.)
+- ✅ **Execution metrics**: Shows query execution time and affected rows (INSERT/UPDATE/DELETE)
+- ✅ **All statement types**: Supports SELECT, INSERT, UPDATE, DELETE operations
+- ✅ **Thread-safe**: Handles concurrent requests in multi-threaded applications
+- ✅ **Multiple log formats**: Works with Logback, Log4j, Log4j2, java.util.logging
+
+**Example output:**
+```sql
+-- Mapper: com.example.mapper.UserMapper.updateById
+-- Thread: [http-nio-8080-exec-1]
+-- Execution Time: 12ms
+-- Rows Affected: 1
+
+UPDATE `user_info`
+SET `username` = 'john_doe',
+    `email` = 'john@example.com',
+    `updated_at` = '2025-11-11 10:30:45'
+WHERE `id` = 123;
+```
+
+**Configuration** (`mybatis-boost.console.*`):
+- `enabled` (default: `true`) - Enable/disable SQL console interceptor
+- `autoDetectDatabase` (default: `true`) - Auto-detect database type from SQL syntax
+- `defaultDatabase` (default: `mysql`) - Default database when auto-detection fails
+- `showExecutionTime` (default: `true`) - Show SQL execution time in output
+- `sessionTimeout` (default: `5000`ms) - Timeout for cleaning up incomplete log sessions
+- `formatSql` (default: `true`) - Format SQL output for better readability
+
+**Usage:**
+1. Enable MyBatis debug logging in your application (e.g., `logging.level.com.example.mapper=DEBUG`)
+2. Run your Spring Boot application in VS Code debug mode
+3. Execute database operations in your application
+4. View intercepted SQL in "MyBatis SQL Output" panel
+5. Export SQL: Right-click on output → "Copy" or use export commands
+
 ### 🎯 MyBatis Code Generator
 
 Generate complete MyBatis boilerplate code from DDL SQL statements with an interactive WebView panel.
@@ -344,6 +394,8 @@ public interface UserMapper {
 
 Open VS Code settings and search for "MyBatis Boost":
 
+### Navigation Settings
+
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `mybatis-boost.cacheSize` | number | 5000 | Maximum number of mapper pairs to cache |
@@ -351,6 +403,32 @@ Open VS Code settings and search for "MyBatis Boost":
 | `mybatis-boost.javaParseLines` | number | 100 | Number of lines to read for namespace extraction |
 | `mybatis-boost.showBindingIcons` | boolean | true | Show gutter icons for MyBatis bindings between Java methods and XML statements |
 | `mybatis-boost.useDefinitionProvider` | boolean | false | Enable DefinitionProvider mode for Java-to-XML navigation (when false, uses CodeLens mode) |
+
+### SQL Console Interceptor Settings (NEW in v0.3.0)
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `mybatis-boost.console.enabled` | boolean | true | Enable/disable SQL console interceptor |
+| `mybatis-boost.console.autoDetectDatabase` | boolean | true | Automatically detect database type from SQL syntax |
+| `mybatis-boost.console.defaultDatabase` | string | mysql | Default database type when auto-detection fails (mysql, postgresql, oracle, sqlserver) |
+| `mybatis-boost.console.showExecutionTime` | boolean | true | Show SQL execution time in output |
+| `mybatis-boost.console.sessionTimeout` | number | 5000 | Session timeout in milliseconds for cleaning up incomplete logs |
+| `mybatis-boost.console.formatSql` | boolean | true | Format SQL output for better readability |
+
+### Generator Settings
+
+| Setting | Type | Default | Description |
+|---------|------|---------|-------------|
+| `mybatis-boost.generator.basePackage` | string | com.example.mybatis | Base package for generated code |
+| `mybatis-boost.generator.author` | string | MyBatis Boost | Author name for code comments |
+| `mybatis-boost.generator.entitySuffix` | string | PO | Entity class suffix |
+| `mybatis-boost.generator.mapperSuffix` | string | Mapper | Mapper interface suffix |
+| `mybatis-boost.generator.serviceSuffix` | string | Service | Service class suffix |
+| `mybatis-boost.generator.datetime` | string | LocalDateTime | DateTime type mapping (Date, LocalDateTime, Instant) |
+| `mybatis-boost.generator.useLombok` | boolean | true | Enable Lombok annotations |
+| `mybatis-boost.generator.useSwagger` | boolean | false | Enable Swagger 2 annotations |
+| `mybatis-boost.generator.useSwaggerV3` | boolean | false | Enable Swagger 3 (OpenAPI) annotations |
+| `mybatis-boost.generator.useMyBatisPlus` | boolean | false | Enable MyBatis Plus annotations |
 
 ## Architecture
 

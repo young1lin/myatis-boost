@@ -6,6 +6,68 @@ All notable changes to the "mybatis-boost" extension will be documented in this 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0] - 2025-11-11
+
+### Added
+
+- ✨ **MyBatis SQL Console Interceptor**: Real-time SQL logging and export functionality
+  - Automatically intercepts MyBatis debug logs from console output
+  - Supports multiple log formats: Logback, Log4j, Log4j2, java.util.logging
+  - Smart log parser extracts preparing statements, parameters, and execution results
+  - Thread-based session tracking for matching SQL statements with their parameters
+  - Converts MyBatis parameter placeholders (`?`) to actual values
+  - **SQL Export**: Export composed SQL to clipboard or file for direct database execution
+  - Dedicated output channel: "MyBatis SQL Output" for viewing all intercepted SQL
+  - Support for all statement types: `SELECT`, `INSERT`, `UPDATE`, `DELETE`
+  - Shows execution time and affected rows (for DML operations)
+
+- 🎯 **Multi-Database Support**: Intelligent database dialect detection and conversion
+  - Auto-detects database type from SQL syntax patterns
+  - Supported databases: **MySQL**, **PostgreSQL**, **Oracle**, **SQL Server**
+  - Database-specific SQL syntax conversion:
+    - **MySQL**: Backtick identifiers, `LIMIT` syntax
+    - **PostgreSQL**: Double-quote identifiers, `LIMIT/OFFSET` syntax
+    - **Oracle**: Double-quote identifiers, `ROWNUM` pagination
+    - **SQL Server**: Bracket identifiers, `TOP/OFFSET FETCH` syntax
+  - Proper handling of string literals, date/time values, and NULL parameters
+
+- ⚙️ **Configuration Options** (`mybatis-boost.console.*`):
+  - `enabled` (default: `true`): Enable/disable SQL console interceptor
+  - `autoDetectDatabase` (default: `true`): Automatically detect database type from SQL
+  - `defaultDatabase` (default: `mysql`): Default database when auto-detection fails
+  - `showExecutionTime` (default: `true`): Show SQL execution time in output
+  - `sessionTimeout` (default: `5000`ms): Timeout for cleaning up incomplete log sessions
+  - `formatSql` (default: `true`): Format SQL output for better readability
+
+### Technical Details
+
+- **Architecture Components**:
+  - `ConsoleInterceptor`: Debug console output interceptor
+  - `DebugTrackerFactory`: Manages debug session tracking
+  - `LogParser`: Parses MyBatis log entries (preparing, parameters, total/updates)
+  - `ParameterParser`: Extracts parameter types and values
+  - `ThreadSessionManager`: Manages SQL sessions by thread ID for multi-threaded apps
+  - `SqlConverter`: Converts parametrized SQL to executable SQL
+  - `DatabaseDialect`: Database-specific SQL syntax handling
+  - `SqlOutputChannel`: Dedicated VS Code output channel for SQL display
+
+- **Log Format Support**:
+  - Flexible pattern matching for various logging frameworks
+  - Extracts thread information for accurate session tracking
+  - Handles multi-line SQL statements
+  - Supports custom log formats and patterns
+
+- **Session Management**:
+  - Thread-based session tracking prevents SQL/parameter mismatches
+  - Automatic session cleanup after timeout (default: 5 seconds)
+  - Handles concurrent requests in multi-threaded environments
+
+### Performance
+
+- Lightweight console interception with minimal overhead
+- Session-based caching reduces redundant parsing
+- Automatic cleanup of expired sessions prevents memory leaks
+
 ## [0.2.2] - 2025-11-10
 
 ### Added
