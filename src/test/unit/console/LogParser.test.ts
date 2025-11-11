@@ -95,6 +95,52 @@ describe('LogParser', () => {
         });
     });
 
+    describe('parse - Spring Boot 3.x format', () => {
+        it('should recognize Spring Boot format', () => {
+            const line = '2025-11-11T17:48:05.123+08:00 DEBUG 126048 --- [mybatis-boost-integration-test] [           main] c.y.m.b.i.t.mapper.UserMapper.selectById : ==>  Preparing: SELECT * FROM user WHERE id = ?';
+            assert.strictEqual(LogParser.isMyBatisLog(line), true);
+        });
+
+        it('should parse Spring Boot Preparing log', () => {
+            const line = '2025-11-11T17:48:05.123+08:00 DEBUG 126048 --- [mybatis-boost-integration-test] [           main] c.y.m.b.i.t.mapper.UserMapper.selectById : ==>  Preparing: SELECT * FROM user WHERE id = ?';
+            const result = LogParser.parse(line);
+
+            assert.ok(result);
+            assert.strictEqual(result.timestamp, '2025-11-11T17:48:05.123+08:00');
+            assert.strictEqual(result.threadId, '126048');
+            assert.strictEqual(result.threadName, 'main');
+            assert.strictEqual(result.mapper, 'c.y.m.b.i.t.mapper.UserMapper.selectById');
+            assert.strictEqual(result.logType, LogType.Preparing);
+            assert.strictEqual(result.content, 'Preparing: SELECT * FROM user WHERE id = ?');
+        });
+
+        it('should parse Spring Boot Parameters log', () => {
+            const line = '2025-11-11T17:48:05.125+08:00 DEBUG 126048 --- [mybatis-boost-integration-test] [           main] c.y.m.b.i.t.mapper.UserMapper.selectById : ==> Parameters: 1(Long)';
+            const result = LogParser.parse(line);
+
+            assert.ok(result);
+            assert.strictEqual(result.logType, LogType.Parameters);
+            assert.strictEqual(result.threadId, '126048');
+            assert.strictEqual(result.content, 'Parameters: 1(Long)');
+        });
+
+        it('should parse Spring Boot Total log', () => {
+            const line = '2025-11-11T17:48:05.130+08:00 DEBUG 126048 --- [mybatis-boost-integration-test] [           main] c.y.m.b.i.t.mapper.UserMapper.selectById : <==      Total: 1';
+            const result = LogParser.parse(line);
+
+            assert.ok(result);
+            assert.strictEqual(result.logType, LogType.Total);
+        });
+
+        it('should handle thread names with spaces', () => {
+            const line = '2025-11-11T17:48:05.123+08:00 DEBUG 126048 --- [my-app] [  worker-1  ] c.y.m.b.mapper.UserMapper : ==>  Preparing: SELECT 1';
+            const result = LogParser.parse(line);
+
+            assert.ok(result);
+            assert.strictEqual(result.threadName, 'worker-1');
+        });
+    });
+
     describe('extractSql', () => {
         it('should extract SQL from Preparing content', () => {
             const content = 'Preparing: SELECT * FROM user WHERE id = ?';

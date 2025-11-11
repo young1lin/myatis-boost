@@ -14,6 +14,9 @@ export class LogParser {
     // Custom format with traceId and thread: [traceId:] 2025-11-11 16:51:45.067 DEBUG 21104 --- [-update-coinMap] c.z.i.d.m.C.selectListByCondition : ==> Preparing: SELECT ...
     private static readonly CUSTOM_PATTERN = /^\[traceId:.*?\]\s+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+DEBUG\s+(\d+)\s+---\s+\[(.*?)\]\s+([\w.]+)\s*:\s+(==>|<==)\s+(.+)$/;
 
+    // Spring Boot 3.x format: 2025-11-11T17:48:05.123+08:00 DEBUG 126048 --- [app-name] [thread-name] c.y.m.b.mapper.UserMapper.selectById : ==> Preparing: SELECT ...
+    private static readonly SPRING_BOOT_PATTERN = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2})\s+DEBUG\s+(\d+)\s+---\s+\[([\w\s-]+)\]\s+\[([\w\s-]+)\]\s+([\w.]+)\s*:\s+(==>|<==)\s+(.+)$/;
+
     /**
      * Check if a line is a MyBatis log line
      */
@@ -23,7 +26,9 @@ export class LogParser {
         }
 
         const trimmed = line.trim();
-        return this.STANDARD_PATTERN.test(trimmed) || this.CUSTOM_PATTERN.test(trimmed);
+        return this.STANDARD_PATTERN.test(trimmed) ||
+               this.CUSTOM_PATTERN.test(trimmed) ||
+               this.SPRING_BOOT_PATTERN.test(trimmed);
     }
 
     /**
@@ -36,7 +41,13 @@ export class LogParser {
 
         const trimmed = line.trim();
 
-        // Try custom format first (more specific)
+        // Try Spring Boot format first (most specific)
+        const springBootMatch = trimmed.match(this.SPRING_BOOT_PATTERN);
+        if (springBootMatch) {
+            return this.parseSpringBootFormat(springBootMatch, trimmed);
+        }
+
+        // Try custom format (more specific than standard)
         const customMatch = trimmed.match(this.CUSTOM_PATTERN);
         if (customMatch) {
             return this.parseCustomFormat(customMatch, trimmed);
@@ -76,6 +87,23 @@ export class LogParser {
             timestamp,
             threadId,
             threadName,
+            mapper,
+            logType: this.parseLogType(content),
+            content: content.trim(),
+            rawLine
+        };
+    }
+
+    /**
+     * Parse Spring Boot 3.x format log
+     */
+    private static parseSpringBootFormat(match: RegExpMatchArray, rawLine: string): LogEntry {
+        const [, timestamp, processId, appName, threadName, mapper, arrow, content] = match;
+
+        return {
+            timestamp,
+            threadId: processId,
+            threadName: threadName.trim(),
             mapper,
             logType: this.parseLogType(content),
             content: content.trim(),
