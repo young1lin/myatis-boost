@@ -29,8 +29,11 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
      */
     createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
         if (!this.enabled) {
+            console.log('[MyBatis Console] Tracker factory disabled, skipping');
             return undefined;
         }
+
+        console.log(`[MyBatis Console] Creating debug tracker for session: ${session.name} (type: ${session.type})`);
 
         return {
             onDidSendMessage: (message: any) => {
@@ -53,12 +56,20 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
             return;
         }
 
+        // Log first output to verify we're receiving messages
+        if (!this.hasReceivedOutput) {
+            this.hasReceivedOutput = true;
+            console.log('[MyBatis Console] Started receiving debug output');
+        }
+
         // Process each line
         const lines = output.split('\n');
         for (const line of lines) {
             this.processLine(line);
         }
     }
+
+    private hasReceivedOutput = false;
 
     /**
      * Process a single line of output
@@ -71,6 +82,12 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
         // Check if it's a MyBatis log line
         if (!LogParser.isMyBatisLog(line)) {
             return;
+        }
+
+        // Log first MyBatis log to confirm detection
+        if (!this.hasDetectedMyBatis) {
+            this.hasDetectedMyBatis = true;
+            console.log('[MyBatis Console] Detected MyBatis log, starting SQL conversion');
         }
 
         // Parse the log line
@@ -86,6 +103,7 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
         switch (entry.logType) {
             case LogType.Preparing:
                 // Just cache, wait for parameters
+                console.log(`[MyBatis Console] Cached SQL: ${session.preparing?.sql?.substring(0, 50)}...`);
                 break;
 
             case LogType.Parameters:
@@ -93,18 +111,22 @@ export class DebugTrackerFactory implements vscode.DebugAdapterTrackerFactory {
                 const paramString = LogParser.extractParameterString(entry.content);
                 if (paramString && session.parameters) {
                     session.parameters.params = ParameterParser.parse(paramString);
+                    console.log(`[MyBatis Console] Cached ${session.parameters.params.length} parameters`);
                 }
                 break;
 
             case LogType.Total:
                 // Convert and output if session is complete
                 if (this.sessionManager.isSessionComplete(session)) {
+                    console.log('[MyBatis Console] Converting and outputting SQL');
                     this.convertAndOutput(session, entry.rawLine);
                     this.sessionManager.removeSession(session.sessionId);
                 }
                 break;
         }
     }
+
+    private hasDetectedMyBatis = false;
 
     /**
      * Convert SQL and output to channel

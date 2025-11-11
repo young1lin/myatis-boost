@@ -21,19 +21,25 @@ export class ConsoleInterceptor {
      * Activate console interceptor
      */
     public activate(context: vscode.ExtensionContext): void {
+        console.log('[MyBatis Console] Activating console interceptor...');
+
         // Get configuration
         const config = this.getConfig();
+        console.log(`[MyBatis Console] Configuration: enabled=${config.enabled}, autoDetect=${config.autoDetectDatabase}, default=${config.defaultDatabase}`);
 
         if (!config.enabled) {
+            console.log('[MyBatis Console] Console interceptor is disabled in settings');
             return;
         }
 
         // Register debug adapter tracker factory for Java
         const trackerDisposable = vscode.debug.registerDebugAdapterTrackerFactory('java', this.trackerFactory);
         this.disposables.push(trackerDisposable);
+        console.log('[MyBatis Console] Registered debug adapter tracker factory for Java');
 
         // Register commands
         this.registerCommands(context);
+        console.log('[MyBatis Console] Registered console commands');
 
         // Listen to configuration changes
         const configDisposable = vscode.workspace.onDidChangeConfiguration(e => {
@@ -42,6 +48,8 @@ export class ConsoleInterceptor {
             }
         });
         this.disposables.push(configDisposable);
+
+        console.log('[MyBatis Console] Console interceptor activation complete');
     }
 
     /**
