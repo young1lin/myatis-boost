@@ -16,9 +16,6 @@ export class LogParser {
     // Standard format: 2025-01-15 10:30:45.123 DEBUG com.example.UserMapper.selectById - ==>  Preparing: SELECT * FROM user WHERE id = ?
     private static readonly STANDARD_PATTERN = /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+DEBUG\s+([\w.]+)\s+-\s+(==>|<==)\s+(.+)$/;
 
-    // Custom format with traceId and thread: [traceId:] 2025-11-11 16:51:45.067 DEBUG 21104 --- [-update-coinMap] c.z.i.d.m.C.selectListByCondition : ==> Preparing: SELECT ...
-    private static readonly CUSTOM_PATTERN = /^\[traceId:.*?\]\s+(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s+DEBUG\s+(\d+)\s+---\s+\[(.*?)\]\s+([\w.]+)\s*:\s+(==>|<==)\s+(.+)$/;
-
     // Spring Boot 3.x format: 2025-11-11T17:48:05.123+08:00 DEBUG 126048 --- [app-name] [thread-name] c.y.m.b.mapper.UserMapper.selectById : ==> Preparing: SELECT ...
     private static readonly SPRING_BOOT_PATTERN = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2})\s+DEBUG\s+(\d+)\s+---\s+\[([\w\s-]+)\]\s+\[([\w\s-]+)\]\s+([\w.]+)\s*:\s+(==>|<==)\s+(.+)$/;
 
@@ -59,7 +56,6 @@ export class LogParser {
 
         // Try strict patterns first (faster)
         if (this.STANDARD_PATTERN.test(trimmed) ||
-            this.CUSTOM_PATTERN.test(trimmed) ||
             this.SPRING_BOOT_PATTERN.test(trimmed)) {
             return true;
         }
@@ -85,12 +81,6 @@ export class LogParser {
             return this.parseSpringBootFormat(springBootMatch, trimmed);
         }
 
-        // Try custom format (more specific than standard)
-        const customMatch = trimmed.match(this.CUSTOM_PATTERN);
-        if (customMatch) {
-            return this.parseCustomFormat(customMatch, trimmed);
-        }
-
         // Try standard format
         const standardMatch = trimmed.match(this.STANDARD_PATTERN);
         if (standardMatch) {
@@ -114,23 +104,6 @@ export class LogParser {
 
         return {
             timestamp,
-            mapper,
-            logType: this.parseLogType(content),
-            content: content.trim(),
-            rawLine
-        };
-    }
-
-    /**
-     * Parse custom format log with thread info
-     */
-    private static parseCustomFormat(match: RegExpMatchArray, rawLine: string): LogEntry {
-        const [, timestamp, threadId, threadName, mapper, arrow, content] = match;
-
-        return {
-            timestamp,
-            threadId,
-            threadName,
             mapper,
             logType: this.parseLogType(content),
             content: content.trim(),

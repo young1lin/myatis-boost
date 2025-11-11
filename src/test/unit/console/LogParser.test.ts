@@ -71,8 +71,6 @@ describe('LogParser', () => {
 
             assert.ok(result);
             assert.strictEqual(result.timestamp, '2025-11-11 16:51:45.067');
-            assert.strictEqual(result.threadId, '21104');
-            assert.strictEqual(result.threadName, '-update-coinMap');
             assert.strictEqual(result.mapper, 'c.z.i.d.m.C.selectListByCondition');
             assert.strictEqual(result.logType, LogType.Preparing);
         });
@@ -83,7 +81,6 @@ describe('LogParser', () => {
 
             assert.ok(result);
             assert.strictEqual(result.logType, LogType.Parameters);
-            assert.strictEqual(result.threadId, '21104');
         });
 
         it('should parse custom format Total', () => {
