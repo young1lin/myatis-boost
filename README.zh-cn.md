@@ -12,6 +12,56 @@ MyBatis 映射器接口（Java）与 XML 映射文件之间的高性能双向导
 
 ## 功能特性
 
+### 🖥️ SQL 控制台拦截器（v0.3.0 新功能）
+
+自动拦截并显示应用程序调试控制台中的 MyBatis SQL 日志，具有实时 SQL 组合和导出功能。
+
+**工作原理：**
+- 监控调试控制台输出中的 MyBatis 日志条目
+- 解析 SQL 语句（`Preparing:`）和参数（`Parameters:`）
+- 使用基于线程的会话跟踪匹配语句与其参数
+- 将参数化 SQL（`?` 占位符）转换为带实际值的可执行 SQL
+- 在专用的 "MyBatis SQL Output" 通道中显示组合后的 SQL
+
+**主要特性：**
+- ✅ **实时 SQL 日志记录**：在应用程序运行时查看实际 SQL
+- ✅ **SQL 导出**：将组合后的 SQL 复制到剪贴板或导出到文件以便数据库执行
+- ✅ **多数据库支持**：自动检测 MySQL、PostgreSQL、Oracle、SQL Server
+- ✅ **数据库特定语法**：将 SQL 转换为正确的方言（标识符、分页等）
+- ✅ **执行指标**：显示查询执行时间和受影响的行数（INSERT/UPDATE/DELETE）
+- ✅ **所有语句类型**：支持 SELECT、INSERT、UPDATE、DELETE 操作
+- ✅ **线程安全**：处理多线程应用程序中的并发请求
+- ✅ **多种日志格式**：支持 Logback、Log4j、Log4j2、java.util.logging
+
+**示例输出：**
+```sql
+-- Mapper: com.example.mapper.UserMapper.updateById
+-- Thread: [http-nio-8080-exec-1]
+-- Execution Time: 12ms
+-- Rows Affected: 1
+
+UPDATE `user_info`
+SET `username` = 'john_doe',
+    `email` = 'john@example.com',
+    `updated_at` = '2025-11-11 10:30:45'
+WHERE `id` = 123;
+```
+
+**配置**（`mybatis-boost.console.*`）：
+- `enabled`（默认：`true`）- 启用/禁用 SQL 控制台拦截器
+- `autoDetectDatabase`（默认：`true`）- 从 SQL 语法自动检测数据库类型
+- `defaultDatabase`（默认：`mysql`）- 自动检测失败时的默认数据库
+- `showExecutionTime`（默认：`true`）- 在输出中显示 SQL 执行时间
+- `sessionTimeout`（默认：`5000`ms）- 清理不完整日志会话的超时时间
+- `formatSql`（默认：`true`）- 格式化 SQL 输出以提高可读性
+
+**使用方法：**
+1. 在应用程序中启用 MyBatis 调试日志（例如：`logging.level.com.example.mapper=DEBUG`）
+2. 在 VS Code 调试模式下运行 Spring Boot 应用程序
+3. 在应用程序中执行数据库操作
+4. 在 "MyBatis SQL Output" 面板中查看拦截的 SQL
+5. 导出 SQL：右键单击输出 → "Copy" 或使用导出命令
+
 ### 🎯 MyBatis 代码生成器
 
 通过交互式 WebView 面板，从 DDL SQL 语句生成完整的 MyBatis 样板代码。
@@ -349,6 +399,8 @@ public interface UserMapper {
 
 打开 VS Code 设置并搜索 "MyBatis Boost"：
 
+### 导航设置
+
 | 设置 | 类型 | 默认值 | 描述 |
 |------|------|--------|------|
 | `mybatis-boost.cacheSize` | number | 5000 | 要缓存的映射器对的最大数量 |
@@ -356,6 +408,32 @@ public interface UserMapper {
 | `mybatis-boost.javaParseLines` | number | 100 | 用于命名空间提取的读取行数 |
 | `mybatis-boost.showBindingIcons` | boolean | true | 在 Java 方法和 XML 语句之间显示 MyBatis 绑定的装订线图标 |
 | `mybatis-boost.useDefinitionProvider` | boolean | false | 启用 Java 到 XML 导航的 DefinitionProvider 模式（为 false 时使用 CodeLens 模式） |
+
+### SQL 控制台拦截器设置（v0.3.0 新增）
+
+| 设置 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| `mybatis-boost.console.enabled` | boolean | true | 启用/禁用 SQL 控制台拦截器 |
+| `mybatis-boost.console.autoDetectDatabase` | boolean | true | 从 SQL 语法自动检测数据库类型 |
+| `mybatis-boost.console.defaultDatabase` | string | mysql | 自动检测失败时的默认数据库类型（mysql、postgresql、oracle、sqlserver） |
+| `mybatis-boost.console.showExecutionTime` | boolean | true | 在输出中显示 SQL 执行时间 |
+| `mybatis-boost.console.sessionTimeout` | number | 5000 | 清理不完整日志的会话超时时间（毫秒） |
+| `mybatis-boost.console.formatSql` | boolean | true | 格式化 SQL 输出以提高可读性 |
+
+### 生成器设置
+
+| 设置 | 类型 | 默认值 | 描述 |
+|------|------|--------|------|
+| `mybatis-boost.generator.basePackage` | string | com.example.mybatis | 生成代码的基础包名 |
+| `mybatis-boost.generator.author` | string | MyBatis Boost | 代码注释中的作者名称 |
+| `mybatis-boost.generator.entitySuffix` | string | PO | 实体类后缀 |
+| `mybatis-boost.generator.mapperSuffix` | string | Mapper | Mapper 接口后缀 |
+| `mybatis-boost.generator.serviceSuffix` | string | Service | Service 类后缀 |
+| `mybatis-boost.generator.datetime` | string | LocalDateTime | 日期时间类型映射（Date、LocalDateTime、Instant） |
+| `mybatis-boost.generator.useLombok` | boolean | true | 启用 Lombok 注解 |
+| `mybatis-boost.generator.useSwagger` | boolean | false | 启用 Swagger 2 注解 |
+| `mybatis-boost.generator.useSwaggerV3` | boolean | false | 启用 Swagger 3 (OpenAPI) 注解 |
+| `mybatis-boost.generator.useMyBatisPlus` | boolean | false | 启用 MyBatis Plus 注解 |
 
 ## 架构
 

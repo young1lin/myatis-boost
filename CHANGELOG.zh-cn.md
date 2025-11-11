@@ -6,6 +6,68 @@
 
 查看 [Keep a Changelog](http://keepachangelog.com/) 了解如何组织此文件的建议。
 
+## [0.3.0] - 2025-11-11
+
+### 新增
+
+- ✨ **MyBatis SQL 控制台拦截器**：实时 SQL 日志记录和导出功能
+  - 自动拦截控制台输出的 MyBatis 调试日志
+  - 支持多种日志格式：Logback、Log4j、Log4j2、java.util.logging
+  - 智能日志解析器提取准备语句、参数和执行结果
+  - 基于线程的会话跟踪，匹配 SQL 语句与其参数
+  - 将 MyBatis 参数占位符（`?`）转换为实际值
+  - **SQL 导出**：将组合后的 SQL 导出到剪贴板或文件，可直接在数据库中执行
+  - 专用输出通道："MyBatis SQL Output"，用于查看所有拦截的 SQL
+  - 支持所有语句类型：`SELECT`、`INSERT`、`UPDATE`、`DELETE`
+  - 显示执行时间和受影响的行数（对于 DML 操作）
+
+- 🎯 **多数据库支持**：智能数据库方言检测和转换
+  - 从 SQL 语法模式自动检测数据库类型
+  - 支持的数据库：**MySQL**、**PostgreSQL**、**Oracle**、**SQL Server**
+  - 数据库特定的 SQL 语法转换：
+    - **MySQL**：反引号标识符、`LIMIT` 语法
+    - **PostgreSQL**：双引号标识符、`LIMIT/OFFSET` 语法
+    - **Oracle**：双引号标识符、`ROWNUM` 分页
+    - **SQL Server**：方括号标识符、`TOP/OFFSET FETCH` 语法
+  - 正确处理字符串字面量、日期时间值和 NULL 参数
+
+- ⚙️ **配置选项**（`mybatis-boost.console.*`）：
+  - `enabled`（默认：`true`）：启用/禁用 SQL 控制台拦截器
+  - `autoDetectDatabase`（默认：`true`）：从 SQL 自动检测数据库类型
+  - `defaultDatabase`（默认：`mysql`）：自动检测失败时的默认数据库
+  - `showExecutionTime`（默认：`true`）：在输出中显示 SQL 执行时间
+  - `sessionTimeout`（默认：`5000`ms）：清理不完整日志会话的超时时间
+  - `formatSql`（默认：`true`）：格式化 SQL 输出以提高可读性
+
+### 技术细节
+
+- **架构组件**：
+  - `ConsoleInterceptor`：调试控制台输出拦截器
+  - `DebugTrackerFactory`：管理调试会话跟踪
+  - `LogParser`：解析 MyBatis 日志条目（准备、参数、总计/更新）
+  - `ParameterParser`：提取参数类型和值
+  - `ThreadSessionManager`：按线程 ID 管理 SQL 会话，用于多线程应用
+  - `SqlConverter`：将参数化 SQL 转换为可执行 SQL
+  - `DatabaseDialect`：数据库特定的 SQL 语法处理
+  - `SqlOutputChannel`：专用 VS Code 输出通道用于 SQL 显示
+
+- **日志格式支持**：
+  - 各种日志框架的灵活模式匹配
+  - 提取线程信息以进行准确的会话跟踪
+  - 处理多行 SQL 语句
+  - 支持自定义日志格式和模式
+
+- **会话管理**：
+  - 基于线程的会话跟踪防止 SQL/参数不匹配
+  - 超时后自动清理会话（默认：5 秒）
+  - 处理多线程环境中的并发请求
+
+### 性能
+
+- 轻量级控制台拦截，开销最小
+- 基于会话的缓存减少冗余解析
+- 自动清理过期会话防止内存泄漏
+
 ## [0.2.2] - 2025-11-10
 
 ### 新增
