@@ -6,6 +6,81 @@
 
 查看 [Keep a Changelog](http://keepachangelog.com/) 了解如何组织此文件的建议。
 
+## [0.3.3] - 2025-11-12
+
+### 新增
+
+- 🎨 **SQL 语法高亮**：为 MyBatis XML mapper 文件提供专业的 SQL 关键字高亮
+  - **自动激活**：在所有 MyBatis Mapper XML 文件中无缝工作
+  - **全面覆盖**：高亮显示 100+ SQL 关键字，支持多种数据库方言
+    - 查询关键字：`SELECT`、`FROM`、`WHERE`、`JOIN`、`UNION`、`INTERSECT`、`EXCEPT`
+    - DML 关键字：`INSERT`、`UPDATE`、`DELETE`、`MERGE`
+    - DDL 关键字：`CREATE`、`ALTER`、`DROP`、`TRUNCATE`、`TABLE`、`INDEX`
+    - 聚合函数：`COUNT`、`SUM`、`AVG`、`MIN`、`MAX`、`DISTINCT`
+    - 窗口函数：`ROW_NUMBER`、`RANK`、`DENSE_RANK`、`LEAD`、`LAG`、`PARTITION`、`OVER`
+    - 字符串函数：`CONCAT`、`SUBSTRING`、`TRIM`、`UPPER`、`LOWER`、`REPLACE`
+    - 日期函数：`NOW`、`CURRENT_DATE`、`DATE_FORMAT`、`TO_CHAR`、`TO_DATE`
+    - 条件逻辑：`CASE`、`WHEN`、`THEN`、`ELSE`、`END`
+    - 数据类型：`INT`、`VARCHAR`、`DATE`、`TIMESTAMP`、`BOOLEAN`、`DECIMAL`
+    - 事务关键字：`BEGIN`、`COMMIT`、`ROLLBACK`、`SAVEPOINT`
+  - **多数据库支持**：
+    - ✅ MySQL：`LIMIT`、`IFNULL`、`CONCAT`
+    - ✅ PostgreSQL：`FETCH FIRST`、`RETURNING`、`::`
+    - ✅ Oracle：`ROWNUM`、`NVL`、`TO_CHAR`、`CONNECT BY`
+    - ✅ SQL Server：`TOP`、`ISNULL`、`FORMAT`、`IDENTITY`
+  - **智能高亮**：
+    - 在 `<select>`、`<insert>`、`<update>`、`<delete>` 标签内高亮 SQL 关键字
+    - 保留 MyBatis 动态标签（`<if>`、`<foreach>`、`<where>` 等）不受干扰
+    - 识别 MyBatis 参数（`#{param}`、`${param}`）
+    - 支持 SQL 注释（`--` 和 `/* */`）
+    - 高亮 SQL 字符串（单引号和双引号）
+    - 识别 SQL 操作符（`=`、`<>`、`<=`、`>=`、`AND`、`OR`、`NOT`、`LIKE`、`IN`、`BETWEEN`）
+  - **高性能**：
+    - 原生 VS Code TextMate 语法引擎
+    - 零运行时开销
+    - 针对大文件优化（已测试 1000+ 行 XML 文件）
+    - 编译语法实现即时高亮
+
+### 技术细节
+
+- **实现方式**：TextMate 语法注入
+  - 语法文件：`syntaxes/mybatis-xml-injection.tmLanguage.json`
+  - 注入范围：`text.xml`
+  - 嵌入语言：SQL
+  - 使用 VS Code 原生分词引擎以获得最佳性能
+
+- **Token 作用域**：11 个类别实现精确高亮
+  - `keyword.other.sql` - 查询关键字（SELECT、FROM、WHERE、JOIN）
+  - `keyword.other.dml.sql` - 数据操作（INSERT、UPDATE、DELETE）
+  - `keyword.other.ddl.sql` - 数据定义（CREATE、ALTER、DROP）
+  - `keyword.other.dql.sql` - 查询子句（GROUP BY、HAVING、ORDER BY）
+  - `keyword.other.aggregate.sql` - 聚合函数（COUNT、SUM、AVG）
+  - `keyword.other.function.sql` - SQL 函数（CONCAT、SUBSTRING、DATE_FORMAT）
+  - `keyword.other.transaction.sql` - 事务控制（BEGIN、COMMIT、ROLLBACK）
+  - `keyword.other.datatype.sql` - 数据类型（INT、VARCHAR、DATE）
+  - `string.quoted.single.sql` - 单引号字符串
+  - `comment.line.double-dash.sql` - SQL 行注释
+  - `variable.other.mybatis.parameter` - MyBatis 参数（#{...}、${...}）
+
+- **配色方案**：
+  - 颜色由当前 VS Code 主题决定
+  - 与主题的关键字、字符串、注释和操作符颜色保持一致
+  - 与流行主题无缝集成（Dark+、Light+、Monokai、Solarized 等）
+
+### 性能
+
+- **即时高亮**：TextMate 语法由 VS Code 编译和缓存
+- **大文件支持**：已测试包含 1000+ 行的 XML 文件
+- **内存高效**：语法规则每个 VS Code 会话只加载一次
+- **无扩展开销**：即使在扩展激活前高亮也能工作
+
+### 用户体验
+
+- **零配置**：所有 MyBatis XML 文件开箱即用
+- **主题自适应**：自动使用当前主题的配色方案
+- **无中断**：保留所有现有的 MyBatis Boost 功能
+- **始终启用**：编辑 MyBatis XML 文件时 SQL 高亮始终可用
+
 ## [0.3.2] - 2025-11-12
 
 ### 新增

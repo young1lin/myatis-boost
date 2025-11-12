@@ -6,6 +6,81 @@ All notable changes to the "mybatis-boost" extension will be documented in this 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.3] - 2025-11-12
+
+### Added
+
+- 🎨 **SQL Syntax Highlighting**: Professional SQL keyword highlighting for MyBatis XML mapper files
+  - **Automatic Activation**: Works seamlessly in all MyBatis Mapper XML files
+  - **Comprehensive Coverage**: Highlights 100+ SQL keywords across multiple database dialects
+    - Query Keywords: `SELECT`, `FROM`, `WHERE`, `JOIN`, `UNION`, `INTERSECT`, `EXCEPT`
+    - DML Keywords: `INSERT`, `UPDATE`, `DELETE`, `MERGE`
+    - DDL Keywords: `CREATE`, `ALTER`, `DROP`, `TRUNCATE`, `TABLE`, `INDEX`
+    - Aggregate Functions: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`, `DISTINCT`
+    - Window Functions: `ROW_NUMBER`, `RANK`, `DENSE_RANK`, `LEAD`, `LAG`, `PARTITION`, `OVER`
+    - String Functions: `CONCAT`, `SUBSTRING`, `TRIM`, `UPPER`, `LOWER`, `REPLACE`
+    - Date Functions: `NOW`, `CURRENT_DATE`, `DATE_FORMAT`, `TO_CHAR`, `TO_DATE`
+    - Conditional Logic: `CASE`, `WHEN`, `THEN`, `ELSE`, `END`
+    - Data Types: `INT`, `VARCHAR`, `DATE`, `TIMESTAMP`, `BOOLEAN`, `DECIMAL`
+    - Transaction Keywords: `BEGIN`, `COMMIT`, `ROLLBACK`, `SAVEPOINT`
+  - **Multi-Database Support**:
+    - ✅ MySQL: `LIMIT`, `IFNULL`, `CONCAT`
+    - ✅ PostgreSQL: `FETCH FIRST`, `RETURNING`, `::`
+    - ✅ Oracle: `ROWNUM`, `NVL`, `TO_CHAR`, `CONNECT BY`
+    - ✅ SQL Server: `TOP`, `ISNULL`, `FORMAT`, `IDENTITY`
+  - **Smart Highlighting**:
+    - Highlights SQL keywords inside `<select>`, `<insert>`, `<update>`, `<delete>` tags
+    - Preserves MyBatis dynamic tags (`<if>`, `<foreach>`, `<where>`, etc.) without interference
+    - Recognizes MyBatis parameters (`#{param}`, `${param}`)
+    - Supports SQL comments (`--` and `/* */`)
+    - Highlights SQL strings (single and double quoted)
+    - Recognizes SQL operators (`=`, `<>`, `<=`, `>=`, `AND`, `OR`, `NOT`, `LIKE`, `IN`, `BETWEEN`)
+  - **High Performance**:
+    - Native VS Code TextMate grammar engine
+    - Zero runtime overhead
+    - Optimized for large files (tested with 1000+ line XML files)
+    - Compiled grammar for instant highlighting
+
+### Technical Details
+
+- **Implementation**: TextMate Grammar Injection
+  - Grammar file: `syntaxes/mybatis-xml-injection.tmLanguage.json`
+  - Injection scope: `text.xml`
+  - Embedded language: SQL
+  - Uses VS Code's native tokenization engine for optimal performance
+
+- **Token Scopes**: 11 categories for precise highlighting
+  - `keyword.other.sql` - Query keywords (SELECT, FROM, WHERE, JOIN)
+  - `keyword.other.dml.sql` - Data manipulation (INSERT, UPDATE, DELETE)
+  - `keyword.other.ddl.sql` - Data definition (CREATE, ALTER, DROP)
+  - `keyword.other.dql.sql` - Query clauses (GROUP BY, HAVING, ORDER BY)
+  - `keyword.other.aggregate.sql` - Aggregate functions (COUNT, SUM, AVG)
+  - `keyword.other.function.sql` - SQL functions (CONCAT, SUBSTRING, DATE_FORMAT)
+  - `keyword.other.transaction.sql` - Transaction control (BEGIN, COMMIT, ROLLBACK)
+  - `keyword.other.datatype.sql` - Data types (INT, VARCHAR, DATE)
+  - `string.quoted.single.sql` - Single-quoted strings
+  - `comment.line.double-dash.sql` - SQL line comments
+  - `variable.other.mybatis.parameter` - MyBatis parameters (#{...}, ${...})
+
+- **Color Scheme**:
+  - Colors are determined by your current VS Code theme
+  - Consistent with your theme's keyword, string, comment, and operator colors
+  - Seamlessly integrates with popular themes (Dark+, Light+, Monokai, Solarized, etc.)
+
+### Performance
+
+- **Instant Highlighting**: TextMate grammar is compiled and cached by VS Code
+- **Large File Support**: Tested with XML files containing 1000+ lines
+- **Memory Efficient**: Grammar rules loaded once per VS Code session
+- **No Extension Overhead**: Highlighting works even before extension activation
+
+### User Experience
+
+- **Zero Configuration**: Works out of the box for all MyBatis XML files
+- **Theme Adaptive**: Automatically uses your current theme's color scheme
+- **No Interruption**: Preserves all existing MyBatis Boost features
+- **Always On**: SQL highlighting is always available when editing MyBatis XML files
+
 ## [0.3.2] - 2025-11-12
 
 ### Added
