@@ -36,6 +36,9 @@ let consoleInterceptor: ConsoleInterceptor;
 let javaToXmlDefinitionProvider: vscode.Disposable | undefined;
 let javaToXmlCodeLensProvider: vscode.Disposable | undefined;
 
+// XML formatting provider (disposable based on configuration)
+let xmlFormattingProvider: vscode.Disposable | undefined;
+
 export async function activate(context: vscode.ExtensionContext) {
     console.log(`[MyBatis Boost] ${vscode.l10n.t('extension.activating')}`);
     const activationStart = Date.now();
@@ -92,8 +95,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // Register Hover providers for SQL composition (always enabled)
     registerHoverProviders(context);
 
-    // Register XML formatting provider (always enabled, triggered by Alt+Shift+F)
-    registerXmlFormattingProvider(context);
+    // Register XML formatting provider based on configuration (triggered by Alt+Shift+F)
+    const formatterEnabled = config.get<boolean>('formatter.enabled', true);
+    if (formatterEnabled) {
+        registerXmlFormattingProvider(context);
+    }
 
     // Register Java-to-XML navigation providers based on configuration
     const useDefinitionProvider = config.get<boolean>('useDefinitionProvider', false);
@@ -164,6 +170,27 @@ export async function activate(context: vscode.ExtensionContext) {
                     }
                 }
             }
+
+            // Handle XML formatter configuration changes
+            if (e.affectsConfiguration('mybatis-boost.formatter.enabled')) {
+                const newFormatterEnabled = vscode.workspace
+                    .getConfiguration('mybatis-boost')
+                    .get<boolean>('formatter.enabled', true);
+
+                console.log(`[MyBatis Boost] XML formatter enabled configuration changed: ${newFormatterEnabled}`);
+
+                if (newFormatterEnabled) {
+                    // Enable formatter
+                    if (!xmlFormattingProvider) {
+                        registerXmlFormattingProvider(context);
+                        vscode.window.showInformationMessage('MyBatis XML formatter enabled');
+                    }
+                } else {
+                    // Disable formatter
+                    unregisterXmlFormattingProvider();
+                    vscode.window.showInformationMessage('MyBatis XML formatter disabled');
+                }
+            }
         })
     );
 
@@ -186,6 +213,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 consoleInterceptor.dispose();
             }
             unregisterJavaToXmlNavigationProvider();
+            unregisterXmlFormattingProvider();
         }
     });
 
@@ -415,6 +443,7 @@ export function deactivate() {
         consoleInterceptor.dispose();
     }
     unregisterJavaToXmlNavigationProvider();
+    unregisterXmlFormattingProvider();
 }
 
 /**
@@ -484,18 +513,28 @@ function registerHoverProviders(context: vscode.ExtensionContext) {
 }
 
 /**
- * Register XML formatting provider for MyBatis mapper files (always enabled)
+ * Register XML formatting provider for MyBatis mapper files
  * Triggered by Alt+Shift+F (or Cmd+Shift+F on Mac)
  */
 function registerXmlFormattingProvider(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider(
-            { language: 'xml', pattern: '**/*.xml' },
-            new MybatisXmlFormattingProvider()
-        )
+    xmlFormattingProvider = vscode.languages.registerDocumentFormattingEditProvider(
+        { language: 'xml', pattern: '**/*.xml' },
+        new MybatisXmlFormattingProvider()
     );
+    context.subscriptions.push(xmlFormattingProvider);
 
     console.log('[MyBatis Boost] XML formatting provider registered');
+}
+
+/**
+ * Unregister XML formatting provider
+ */
+function unregisterXmlFormattingProvider() {
+    if (xmlFormattingProvider) {
+        xmlFormattingProvider.dispose();
+        xmlFormattingProvider = undefined;
+        console.log('[MyBatis Boost] XML formatting provider unregistered');
+    }
 }
 
 /**

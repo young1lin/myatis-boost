@@ -231,6 +231,11 @@
           "default": true,
           "description": "Format SQL output for better readability"
         },
+        "mybatis-boost.formatter.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable MyBatis XML formatter (triggered by Alt+Shift+F). Changes take effect immediately."
+        },
         "mybatis-boost.formatter.language": {
           "type": "string",
           "enum": [
