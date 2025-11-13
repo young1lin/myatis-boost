@@ -384,18 +384,23 @@ class MybatisCstFormatter {
             .map(child => this.formatNode(child, depth + 1, options))
             .join('');
 
-        const trimmedChildren = childrenFormatted.trim();
-
         // Check if children contain only inline content (no nested tags)
         const hasNestedTags = node.children.some(child => child.type === 'tag');
 
-        if (!hasNestedTags && trimmedChildren.length < 80) {
-            // Inline format for short content without nested tags
-            return `\n${indent}<${tagName}${attrString}>\n${this.getIndent(depth + 1, options.tabWidth || 2)}${trimmedChildren}\n${indent}</${tagName}>`;
+        if (hasNestedTags) {
+            // Multi-line format with nested tags - preserve all formatting including leading newlines
+            return `\n${indent}<${tagName}${attrString}>${childrenFormatted}\n${indent}</${tagName}>`;
+        } else {
+            // Format for content without nested tags
+            const trimmedChildren = childrenFormatted.trim();
+            if (trimmedChildren.length < 80) {
+                // Short inline content
+                return `\n${indent}<${tagName}${attrString}>\n${this.getIndent(depth + 1, options.tabWidth || 2)}${trimmedChildren}\n${indent}</${tagName}>`;
+            } else {
+                // Long content
+                return `\n${indent}<${tagName}${attrString}>${childrenFormatted}\n${indent}</${tagName}>`;
+            }
         }
-
-        // Multi-line format
-        return `\n${indent}<${tagName}${attrString}>${trimmedChildren}\n${indent}</${tagName}>`;
     }
 
     private formatSql(node: SqlNode, depth: number, options: FormatOptionsWithLanguage): string {

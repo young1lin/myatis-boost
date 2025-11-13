@@ -603,4 +603,100 @@ describe('MybatisSqlFormatter', () => {
             assert.ok(cstOutput.includes('Tag: <if>'));
         });
     });
+
+    describe('Proper Nested Tag Indentation with Custom Tab Width', () => {
+        it('should properly indent <trim> and <if> tags with 4-space indentation', () => {
+            const input = `INSERT INTO user_table <trim prefix="(" suffix=")" suffixOverrides=","><if test="id != null">id,</if><if test="name != null">user_name,</if><if test="age != null">age,</if></trim>`;
+            const result = formatter.format(input, { tabWidth: 4 });
+
+            // Verify tags are on separate lines
+            assert.ok(result.includes('<trim'));
+
+            // Verify <if> tags are indented under <trim>
+            const lines = result.split('\n');
+            let trimLineIndex = -1;
+            let firstIfLineIndex = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].includes('<trim')) {
+                    trimLineIndex = i;
+                }
+                if (lines[i].includes('<if test="id != null">') && firstIfLineIndex === -1) {
+                    firstIfLineIndex = i;
+                }
+            }
+
+            // <if> should be on a different line than <trim>
+            assert.ok(trimLineIndex !== -1, 'Should find <trim> tag');
+            assert.ok(firstIfLineIndex !== -1, 'Should find <if> tag');
+            assert.ok(firstIfLineIndex > trimLineIndex, '<if> should be on a line after <trim>');
+
+            // Check indentation - <if> should have 4 more spaces than <trim>
+            const trimLine = lines[trimLineIndex];
+            const ifLine = lines[firstIfLineIndex];
+            const trimIndent = trimLine.match(/^(\s*)/)?.[1].length || 0;
+            const ifIndent = ifLine.match(/^(\s*)/)?.[1].length || 0;
+
+            assert.strictEqual(ifIndent - trimIndent, 4, '<if> should be indented 4 spaces more than <trim>');
+        });
+
+        it('should properly indent multi-level nested tags with 4-space indentation', () => {
+            const input = `SELECT * FROM users <where><if test="status == 1"><trim prefix="AND"><if test="name != null">name=#{name}</if></trim></if></where>`;
+            const result = formatter.format(input, { tabWidth: 4 });
+
+            const lines = result.split('\n');
+            const tagIndents = new Map<string, number>();
+
+            for (const line of lines) {
+                if (line.includes('<where>')) {
+                    tagIndents.set('where', line.match(/^(\s*)/)?.[1].length || 0);
+                }
+                if (line.includes('<if test="status == 1">')) {
+                    tagIndents.set('if1', line.match(/^(\s*)/)?.[1].length || 0);
+                }
+                if (line.includes('<trim')) {
+                    tagIndents.set('trim', line.match(/^(\s*)/)?.[1].length || 0);
+                }
+                if (line.includes('<if test="name != null">')) {
+                    tagIndents.set('if2', line.match(/^(\s*)/)?.[1].length || 0);
+                }
+            }
+
+            // Verify hierarchical indentation
+            const whereIndent = tagIndents.get('where') || 0;
+            const if1Indent = tagIndents.get('if1') || 0;
+            const trimIndent = tagIndents.get('trim') || 0;
+            const if2Indent = tagIndents.get('if2') || 0;
+
+            assert.strictEqual(if1Indent - whereIndent, 4, 'First <if> should be 4 spaces deeper than <where>');
+            assert.strictEqual(trimIndent - if1Indent, 4, '<trim> should be 4 spaces deeper than first <if>');
+            assert.strictEqual(if2Indent - trimIndent, 4, 'Second <if> should be 4 spaces deeper than <trim>');
+        });
+
+        it('should handle real-world INSERT with nested tags and 4-space indentation', () => {
+            const input = `INSERT INTO demo_table <trim prefix="(" suffix=")" suffixOverrides=","><if test="id != null">id,</if><if test="userId != null">user_id,</if><if test="status != null">status,</if></trim> VALUES <trim prefix="(" suffix=")" suffixOverrides=","><if test="id != null">#{id},</if><if test="userId != null">#{userId},</if><if test="status != null">#{status},</if></trim>`;
+            const result = formatter.format(input, { tabWidth: 4 });
+
+            // Verify proper structure
+            assert.ok(result.includes('INSERT INTO'));
+            assert.ok(result.includes('<trim prefix="('));
+            assert.ok(result.includes('VALUES'));
+
+            // Count indentation levels
+            const lines = result.split('\n');
+            let hasProperlyIndentedIf = false;
+
+            for (const line of lines) {
+                if (line.includes('<if test=')) {
+                    const indent = line.match(/^(\s*)/)?.[1].length || 0;
+                    // <if> tags should be indented (at least 4 spaces)
+                    if (indent >= 4) {
+                        hasProperlyIndentedIf = true;
+                    }
+                }
+            }
+
+            assert.ok(hasProperlyIndentedIf, '<if> tags should have proper indentation');
+        });
+    });
 });
