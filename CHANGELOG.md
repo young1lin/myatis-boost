@@ -6,6 +6,83 @@ All notable changes to the "mybatis-boost" extension will be documented in this 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.4] - 2025-11-13
+
+### Fixed
+
+- 🔧 **SQL Formatter Architecture Refactoring**: Migrated from placeholder-based to CST-based (Concrete Syntax Tree) architecture
+  - **Issue**: The previous placeholder-based formatter couldn't maintain proper indentation for nested dynamic tags
+    - Nested tags like `<trim><if></if></trim>` were placed on the same line
+    - Child tags (`<if>`) had no indentation under parent tags (`<trim>`)
+    - Multi-level nested structures lost their hierarchical indentation
+  - **Root Cause**:
+    - MybatisSqlFormatter used placeholder replacement which flattened the tag hierarchy
+    - MybatisXmlFormattingProvider used `line.trim()` which removed ALL indentation including relative indentation from nested tags
+  - **Solution**:
+    - **CST-based Architecture**: Implemented Concrete Syntax Tree parser and formatter
+      - Created 4 node types: `RootNode`, `TagNode`, `SqlNode`, `ParamNode`
+      - Each node tracks its depth for proper indentation calculation
+      - Formatter renders CST back to text with depth-based indentation
+    - **Relative Indentation Preservation**: Fixed `buildFormattedContent()` in MybatisXmlFormattingProvider
+      - Find minimum indentation across all lines as baseline
+      - Remove only baseline indentation, preserve relative indentation differences
+      - Add target indentation while maintaining hierarchy
+  - **Implementation Details**:
+    - `MybatisSqlParser`: Parses SQL and dynamic tags into CST structure
+    - `MybatisCstFormatter`: Renders CST with proper hierarchical indentation
+    - `formatTag()`: Distinguishes nested tags from plain content, preserves all formatting for nested structures
+    - `buildFormattedContent()`: Uses `line.substring(minIndent)` instead of `line.trim()`
+  - **Features**:
+    - ✅ Correctly handles nested tags at any depth level
+    - ✅ Maintains proper indentation hierarchy (4 spaces per level by default)
+    - ✅ Supports configurable tab width (e.g., 4 spaces via `tabWidth: 4`)
+    - ✅ Preserves all MyBatis parameters and dynamic SQL tags
+    - ✅ Added `debugPrintCst()` method for CST structure debugging
+  - **Testing**:
+    - Added 13 new comprehensive tests for nested tag indentation
+    - All 243 unit tests passing
+    - Verified correct indentation at 4+ depth levels
+  - **Result**: Perfect hierarchical indentation for nested dynamic SQL tags
+
+### Example
+
+**Before Fix:**
+```xml
+<insert id="insertSelective" parameterType="com.example.DemoItemPO">
+INSERT INTO demo_item <trim prefix="(" suffix=")" suffixOverrides=","><if test="id != null">id,</if><if test="actId != null">act_id,</if></trim> VALUES ...
+</insert>
+```
+❌ Issues:
+- `<trim>` and `<if>` on the same line
+- `<if>` has no indentation under `<trim>`
+- All content flattened to same indentation level
+
+**After Fix (4-space indentation):**
+```xml
+<insert id="insertSelective" parameterType="com.example.DemoItemPO">
+    INSERT INTO demo_item
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="id != null">
+            id,
+        </if>
+        <if test="actId != null">
+            act_id,
+        </if>
+    </trim>
+    VALUES
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="id != null">
+            #{id},
+        </if>
+    </trim>
+</insert>
+```
+✅ Perfect:
+- Each tag on separate line
+- `<if>` indented 4 spaces under `<trim>`
+- Content indented 4 more spaces under `<if>`
+- Hierarchical indentation maintained throughout
+
 ## [0.3.3] - 2025-11-13
 
 ### Fixed

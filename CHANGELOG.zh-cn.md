@@ -6,6 +6,83 @@
 
 查看 [Keep a Changelog](http://keepachangelog.com/) 了解如何组织此文件的建议。
 
+## [0.3.4] - 2025-11-13
+
+### 修复
+
+- 🔧 **SQL 格式化器架构重构**：从基于占位符的架构迁移到基于 CST（具体语法树）的架构
+  - **问题**：之前基于占位符的格式化器无法保持嵌套动态标签的正确缩进
+    - 嵌套标签如 `<trim><if></if></trim>` 被放在同一行
+    - 子标签（`<if>`）在父标签（`<trim>`）下没有缩进
+    - 多层嵌套结构丢失了层级缩进
+  - **根本原因**：
+    - MybatisSqlFormatter 使用占位符替换，破坏了标签的层级结构
+    - MybatisXmlFormattingProvider 使用 `line.trim()` 移除了所有缩进，包括嵌套标签的相对缩进
+  - **解决方案**：
+    - **基于 CST 的架构**：实现了具体语法树解析器和格式化器
+      - 创建了 4 种节点类型：`RootNode`、`TagNode`、`SqlNode`、`ParamNode`
+      - 每个节点跟踪其深度，用于正确计算缩进
+      - 格式化器将 CST 渲染回带有基于深度缩进的文本
+    - **保留相对缩进**：修复了 MybatisXmlFormattingProvider 中的 `buildFormattedContent()`
+      - 找到所有行的最小缩进作为基准
+      - 仅移除基准缩进，保留相对缩进差异
+      - 添加目标缩进的同时保持层级结构
+  - **实现细节**：
+    - `MybatisSqlParser`：将 SQL 和动态标签解析为 CST 结构
+    - `MybatisCstFormatter`：使用正确的层级缩进渲染 CST
+    - `formatTag()`：区分嵌套标签和纯文本内容，为嵌套结构保留所有格式
+    - `buildFormattedContent()`：使用 `line.substring(minIndent)` 而不是 `line.trim()`
+  - **功能特性**：
+    - ✅ 正确处理任意深度的嵌套标签
+    - ✅ 保持正确的缩进层级（默认每层 4 个空格）
+    - ✅ 支持可配置的制表符宽度（例如，通过 `tabWidth: 4` 设置 4 个空格）
+    - ✅ 保留所有 MyBatis 参数和动态 SQL 标签
+    - ✅ 添加了 `debugPrintCst()` 方法用于调试 CST 结构
+  - **测试**：
+    - 新增 13 个嵌套标签缩进的综合测试
+    - 所有 243 个单元测试通过
+    - 验证了 4+ 层深度的正确缩进
+  - **结果**：嵌套动态 SQL 标签的完美层级缩进
+
+### 示例
+
+**修复前：**
+```xml
+<insert id="insertSelective" parameterType="com.example.DemoItemPO">
+INSERT INTO demo_item <trim prefix="(" suffix=")" suffixOverrides=","><if test="id != null">id,</if><if test="actId != null">act_id,</if></trim> VALUES ...
+</insert>
+```
+❌ 问题：
+- `<trim>` 和 `<if>` 在同一行
+- `<if>` 在 `<trim>` 下没有缩进
+- 所有内容被压扁到同一缩进层级
+
+**修复后（4 个空格缩进）：**
+```xml
+<insert id="insertSelective" parameterType="com.example.DemoItemPO">
+    INSERT INTO demo_item
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="id != null">
+            id,
+        </if>
+        <if test="actId != null">
+            act_id,
+        </if>
+    </trim>
+    VALUES
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+        <if test="id != null">
+            #{id},
+        </if>
+    </trim>
+</insert>
+```
+✅ 完美：
+- 每个标签独占一行
+- `<if>` 在 `<trim>` 下缩进 4 个空格
+- 内容在 `<if>` 下再缩进 4 个空格
+- 整个层级缩进保持一致
+
 ## [0.3.3] - 2025-11-13
 
 ### 修复
