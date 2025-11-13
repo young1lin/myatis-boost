@@ -122,8 +122,12 @@ export class MybatisXmlFormattingProvider implements vscode.DocumentFormattingEd
                 continue;
             }
 
+            // Normalize indentation: remove all leading spaces from each line
+            // This prevents spacing accumulation on repeated formatting
+            const normalizedContent = this.normalizeIndentation(trimmedContent);
+
             // Format the SQL content
-            const formatted = this.formatter.format(trimmedContent, formatterOptions);
+            const formatted = this.formatter.format(normalizedContent, formatterOptions);
 
             // Build the new content with proper indentation
             // Style: First line of SQL should be on a new line after opening tag
@@ -136,6 +140,41 @@ export class MybatisXmlFormattingProvider implements vscode.DocumentFormattingEd
         }
 
         return edits;
+    }
+
+    /**
+     * Normalize indentation of SQL content
+     * Removes all leading spaces from each line while preserving relative indentation
+     * This prevents spacing accumulation when formatting multiple times
+     *
+     * @param content - SQL content to normalize
+     * @returns Normalized content with baseline indentation removed
+     */
+    private normalizeIndentation(content: string): string {
+        const lines = content.split('\n');
+
+        // Find minimum indentation across all non-empty lines
+        let minIndent = Infinity;
+        for (const line of lines) {
+            if (line.trim().length > 0) {
+                const leadingSpaces = line.match(/^\s*/)?.[0].length || 0;
+                minIndent = Math.min(minIndent, leadingSpaces);
+            }
+        }
+
+        if (minIndent === Infinity || minIndent === 0) {
+            return content;
+        }
+
+        // Remove the minimum indentation from all lines
+        const normalized = lines.map(line => {
+            if (line.trim().length === 0) {
+                return '';
+            }
+            return line.substring(minIndent);
+        });
+
+        return normalized.join('\n');
     }
 
     /**
