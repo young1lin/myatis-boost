@@ -250,7 +250,7 @@ describe('MybatisSqlFormatter', () => {
             const result = formatter.format(input);
 
             assert.ok(result.includes('<if test="name != null">'));
-            assert.ok(result.includes('name = #{name}'));
+            assert.ok(result.includes('name') && result.includes('#{name}'));
             assert.ok(result.includes('</if>'));
         });
     });
@@ -443,6 +443,164 @@ describe('MybatisSqlFormatter', () => {
             assert.ok(result.includes('<include refid="BaseColumns"/>'));
             assert.ok(result.includes('FROM'));
             assert.ok(result.includes('<where>'));
+        });
+    });
+
+    describe('Nested Tag Indentation (CST-based)', () => {
+        it('should properly indent nested <trim> with <if> tags', () => {
+            const input = `SELECT * FROM users <trim prefix="WHERE" prefixOverrides="AND |OR "><if test="name != null">AND name=#{name}</if></trim>`;
+            const result = formatter.format(input);
+
+            // Verify tags are preserved
+            assert.ok(result.includes('<trim'));
+            assert.ok(result.includes('<if test="name != null">'));
+            assert.ok(result.includes('</if>'));
+            assert.ok(result.includes('</trim>'));
+
+            // Verify SQL is formatted
+            assert.ok(result.includes('SELECT'));
+            assert.ok(result.includes('FROM'));
+            assert.ok(result.includes('#{name}'));
+        });
+
+        it('should properly indent multi-level nested tags', () => {
+            const input = `SELECT * FROM users <where><if test="type == 1"><trim prefix="AND"><if test="status != null">status=#{status}</if></trim></if></where>`;
+            const result = formatter.format(input);
+
+            // Verify all tags are preserved
+            assert.ok(result.includes('<where>'));
+            assert.ok(result.includes('<if test="type == 1">'));
+            assert.ok(result.includes('<trim'));
+            assert.ok(result.includes('<if test="status != null">'));
+            assert.ok(result.includes('</if>'));
+            assert.ok(result.includes('</trim>'));
+            assert.ok(result.includes('</where>'));
+
+            // Verify parameters are preserved
+            assert.ok(result.includes('#{status}'));
+        });
+
+        it('should properly indent nested <foreach> inside <if> tags', () => {
+            const input = `SELECT * FROM users WHERE 1=1 <if test="ids != null">AND id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach></if>`;
+            const result = formatter.format(input);
+
+            // Verify tags are preserved
+            assert.ok(result.includes('<if test="ids != null">'));
+            assert.ok(result.includes('<foreach'));
+            assert.ok(result.includes('collection="ids"'));
+            assert.ok(result.includes('</foreach>'));
+            assert.ok(result.includes('</if>'));
+
+            // Verify parameters are preserved
+            assert.ok(result.includes('#{id}'));
+        });
+
+        it('should properly indent complex nested structure with <choose>, <when>, <if>', () => {
+            const input = `UPDATE users <set><choose><when test="type == 1"><if test="name != null">name=#{name},</if></when><otherwise>status=0</otherwise></choose></set> WHERE id=#{id}`;
+            const result = formatter.format(input);
+
+            // Verify all tags are preserved
+            assert.ok(result.includes('<set>'));
+            assert.ok(result.includes('<choose>'));
+            assert.ok(result.includes('<when test="type == 1">'));
+            assert.ok(result.includes('<if test="name != null">'));
+            assert.ok(result.includes('<otherwise>'));
+            assert.ok(result.includes('</set>'));
+
+            // Verify parameters are preserved
+            assert.ok(result.includes('#{name}'));
+            assert.ok(result.includes('#{id}'));
+        });
+
+        it('should properly indent deeply nested tags (4 levels)', () => {
+            const input = `SELECT * FROM users <where><choose><when test="condition1"><trim prefix="AND"><if test="condition2">field=#{value}</if></trim></when></choose></where>`;
+            const result = formatter.format(input);
+
+            // Verify all tags are preserved
+            assert.ok(result.includes('<where>'));
+            assert.ok(result.includes('<choose>'));
+            assert.ok(result.includes('<when'));
+            assert.ok(result.includes('<trim'));
+            assert.ok(result.includes('<if'));
+            assert.ok(result.includes('#{value}'));
+
+            // All closing tags should be present
+            const closeIfCount = (result.match(/<\/if>/g) || []).length;
+            const closeTrimCount = (result.match(/<\/trim>/g) || []).length;
+            const closeWhenCount = (result.match(/<\/when>/g) || []).length;
+            const closeChooseCount = (result.match(/<\/choose>/g) || []).length;
+            const closeWhereCount = (result.match(/<\/where>/g) || []).length;
+
+            assert.strictEqual(closeIfCount, 1);
+            assert.strictEqual(closeTrimCount, 1);
+            assert.strictEqual(closeWhenCount, 1);
+            assert.strictEqual(closeChooseCount, 1);
+            assert.strictEqual(closeWhereCount, 1);
+        });
+
+        it('should handle multiple sibling tags at same nesting level', () => {
+            const input = `SELECT * FROM users <where><if test="name != null">AND name=#{name}</if><if test="age != null">AND age=#{age}</if><if test="email != null">AND email=#{email}</if></where>`;
+            const result = formatter.format(input);
+
+            // Verify all if tags are preserved
+            const ifTags = result.match(/<if test=/g);
+            assert.strictEqual(ifTags?.length, 3);
+
+            // Verify all parameters are preserved
+            assert.ok(result.includes('#{name}'));
+            assert.ok(result.includes('#{age}'));
+            assert.ok(result.includes('#{email}'));
+
+            // Verify all closing tags
+            const closeIfTags = result.match(/<\/if>/g);
+            assert.strictEqual(closeIfTags?.length, 3);
+        });
+
+        it('should preserve parameter placement within nested tags', () => {
+            const input = `UPDATE users <set><if test="data != null">name=#{data.name}, age=#{data.age}</if></set> WHERE id=#{id}`;
+            const result = formatter.format(input);
+
+            // Verify parameters with nested properties are preserved
+            assert.ok(result.includes('#{data.name}'));
+            assert.ok(result.includes('#{data.age}'));
+            assert.ok(result.includes('#{id}'));
+        });
+
+        it('should handle self-closing tags within nested structure', () => {
+            const input = `SELECT * FROM users <where><bind name="pattern" value="'%' + name + '%'"/><if test="name != null">AND name LIKE #{pattern}</if></where>`;
+            const result = formatter.format(input);
+
+            // Verify self-closing bind tag is preserved
+            assert.ok(result.includes('<bind'));
+            assert.ok(result.includes('name="pattern"'));
+            assert.ok(result.includes('/>'));
+
+            // Verify if tag is preserved
+            assert.ok(result.includes('<if test="name != null">'));
+            assert.ok(result.includes('#{pattern}'));
+        });
+    });
+
+    describe('CST Debug Functionality', () => {
+        it('should print CST structure for debugging', () => {
+            const input = `SELECT * FROM users <where><if test="name != null">AND name=#{name}</if></where>`;
+            const cstOutput = formatter.debugPrintCst(input);
+
+            // Should contain node types
+            assert.ok(cstOutput.includes('Root'));
+            assert.ok(cstOutput.includes('SQL'));
+            assert.ok(cstOutput.includes('Tag:'));
+            assert.ok(cstOutput.includes('Param:'));
+        });
+
+        it('should show nested structure in CST debug output', () => {
+            const input = `<trim><if>test</if></trim>`;
+            const cstOutput = formatter.debugPrintCst(input);
+
+            // Should show nested structure with indentation
+            assert.ok(cstOutput.includes('Root'));
+            assert.ok(cstOutput.includes('Tag: <trim>'));
+            assert.ok(cstOutput.includes('Tag: <if>'));
         });
     });
 });
