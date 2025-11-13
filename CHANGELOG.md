@@ -6,6 +6,68 @@ All notable changes to the "mybatis-boost" extension will be documented in this 
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.7] - 2025-11-13
+
+### Fixed
+
+- 🔧 **SQL Formatter Idempotency Issues**: Fixed spacing accumulation and comma placement bugs to ensure consistent formatting results
+  - **Issue #1: Commas on Separate Lines**
+    - **Problem**: sql-formatter v15 was placing commas on separate lines (leading comma style)
+      ```sql
+      SET
+        name = #{name}
+      ,
+        age = #{age}
+      ```
+    - **Solution**: Added `postprocessCommas()` method in `cleanupFormatting()` to move leading commas to end of previous line
+    - **Result**: Commas now properly placed at end of lines
+      ```sql
+      SET
+        name = #{name},
+        age = #{age},
+      ```
+
+  - **Issue #2: Spacing Accumulation on Repeated Formatting (XML Provider Level)**
+    - **Problem**: When formatting multiple times without saving, leading spaces accumulated exponentially
+    - **Root Cause**: `trim()` only removes outer whitespace, not per-line indentation
+    - **Solution**: Added `normalizeIndentation()` method in `MybatisXmlFormattingProvider.formatStatementTags()`
+      - Finds minimum indentation across all lines
+      - Removes baseline indentation before formatting
+      - Prevents accumulation while preserving relative indentation
+
+  - **Issue #3: Spacing Accumulation on Repeated Formatting (CST Formatter Level)**
+    - **Problem**: Even with XML provider fix, spacing still accumulated when repeatedly pressing format key
+      - First format: `user` line has 16 spaces
+      - Second format: `user` line has 24 spaces (+8)
+      - Third format: `user` line has 32 spaces (+8)
+      - Continued to 88+ spaces...
+    - **Root Cause**:
+      - CST formatter's `formatSql()` preserved indentation from previous formatting
+      - When SQL like `INSERT INTO\n        user` (second line has 8 spaces) was passed to sql-formatter
+      - sql-formatter added MORE spacing on top of existing 8 spaces
+      - Next cycle: preserved spacing increased, creating exponential growth
+    - **Solution**: Modified `normalizeSqlIndentation()` in `MybatisCstFormatter.formatSql()` to:
+      - Remove ALL leading spaces from every line using `trimStart()`
+      - Ensures sql-formatter receives completely clean input without pre-existing indentation
+      - sql-formatter then applies its own consistent indentation rules
+
+  - **Implementation Details**:
+    - **MybatisSqlFormatter.postprocessCommas()**: Converts leading comma style to trailing comma style
+    - **MybatisXmlFormattingProvider.normalizeIndentation()**: Removes baseline indentation from extracted XML content
+    - **MybatisCstFormatter.normalizeSqlIndentation()**: Removes ALL leading spaces before sql-formatter processing
+
+  - **Testing**:
+    - ✅ Manual verification: 10 repeated formats maintain stable spacing (max 4 spaces)
+    - ✅ Idempotency test: `format(format(x)) === format(x)`
+    - ✅ All 243 unit tests passing
+    - ✅ Formatting is now truly idempotent regardless of input indentation
+
+  - **Impact**:
+    - Users can press format key multiple times without spacing accumulation
+    - Consistent output whether formatting clean SQL or pre-formatted SQL
+    - Fixes reported issue of spacing growing to 88+ spaces
+    - No commas appearing on separate lines
+
 ## [0.3.6] - 2025-11-13
 
 ### Changed
