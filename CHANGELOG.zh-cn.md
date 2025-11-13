@@ -6,6 +6,92 @@
 
 查看 [Keep a Changelog](http://keepachangelog.com/) 了解如何组织此文件的建议。
 
+## [0.3.7] - 2025-11-13
+
+### 修复
+
+- 🔧 **SQL 格式化器幂等性问题**：修复空格累积和逗号位置错误，确保格式化结果一致
+  - **问题 #1：逗号单独占一行**
+    - **问题描述**：sql-formatter v15 将逗号放置在单独的行上（leading comma 风格）
+      ```sql
+      SET
+        name = #{name}
+      ,
+        age = #{age}
+      ```
+    - **解决方案**：在 `cleanupFormatting()` 中添加 `postprocessCommas()` 方法，将行首逗号移动到前一行末尾
+    - **效果**：逗号现在正确放置在行尾
+      ```sql
+      SET
+        name = #{name},
+        age = #{age},
+      ```
+
+  - **问题 #2：重复格式化时空格累积（XML Provider 层级）**
+    - **问题描述**：多次格式化而不保存时，前导空格呈指数级累积
+    - **根本原因**：`trim()` 只移除外部空白，不移除每行的缩进
+    - **解决方案**：在 `MybatisXmlFormattingProvider.formatStatementTags()` 中添加 `normalizeIndentation()` 方法
+      - 查找所有行的最小缩进
+      - 格式化前移除基线缩进
+      - 防止累积的同时保留相对缩进
+
+  - **问题 #3：重复格式化时空格累积（CST Formatter 层级）**
+    - **问题描述**：即使有 XML provider 的修复，重复按格式化键时空格仍在累积
+      - 第 1 次格式化：`user` 行有 16 个空格
+      - 第 2 次格式化：`user` 行有 24 个空格（+8）
+      - 第 3 次格式化：`user` 行有 32 个空格（+8）
+      - 持续累积到 88+ 个空格...
+    - **根本原因**：
+      - CST formatter 的 `formatSql()` 保留了之前格式化的缩进
+      - 当类似 `INSERT INTO\n        user`（第二行有 8 个空格）的 SQL 传递给 sql-formatter 时
+      - sql-formatter 在现有 8 个空格的基础上又添加了更多空格
+      - 下一轮循环：保留的空格增加，造成指数级增长
+    - **解决方案**：修改 `MybatisCstFormatter.formatSql()` 中的 `normalizeSqlIndentation()` 方法：
+      - 使用 `trimStart()` 移除每行的所有前导空格
+      - 确保 sql-formatter 接收完全干净的输入，没有预先存在的缩进
+      - sql-formatter 然后应用其自己的一致缩进规则
+
+  - **问题 #4：SQL 操作符和 MyBatis 参数之间缺少空格**
+    - **问题描述**：SQL 格式化为 `id =#{id}` 而不是 `id = #{id}`（参数前缺少空格）
+      ```sql
+      WHERE
+          id =#{id}
+      AND name =#{name}
+      ```
+    - **根本原因**：
+      - CST parser 为 SQL 文本（`"WHERE id ="`）和参数（`"#{id}"`）创建独立的节点
+      - `formatRoot()` 和 `formatTag()` 直接拼接节点，未检查是否需要空格
+      - 结果：拼接产生 `"WHERE id =#{id}"`，缺少空格
+    - **解决方案**：创建 `formatChildren()` 辅助方法，包含智能空格处理逻辑
+      - 当前节点为 'param' 类型且前一个节点为 'sql' 类型时
+      - 检查前一个节点是否以空白字符结尾
+      - 在参数前添加空格：`"WHERE id =" + " " + "#{id}" = "WHERE id = #{id}"`
+      - 应用于 `formatRoot()` 和 `formatTag()`
+    - **效果**：操作符和参数之间有正确的空格
+      ```sql
+      WHERE
+          id = #{id}
+      AND name = #{name}
+      ```
+
+  - **实现细节**：
+    - **MybatisSqlFormatter.postprocessCommas()**：将 leading comma 风格转换为 trailing comma 风格
+    - **MybatisXmlFormattingProvider.normalizeIndentation()**：从提取的 XML 内容中移除基线缩进
+    - **MybatisCstFormatter.normalizeSqlIndentation()**：在 sql-formatter 处理前移除所有前导空格
+    - **MybatisCstFormatter.formatChildren()**：确保 SQL 节点和参数节点之间有正确的空格
+
+  - **测试**：
+    - ✅ 手动验证：10 次重复格式化保持稳定的空格（最多 4 个空格）
+    - ✅ 幂等性测试：`format(format(x)) === format(x)`
+    - ✅ 所有 243 个单元测试通过
+    - ✅ 格式化现在真正幂等，无论输入缩进如何
+
+  - **影响**：
+    - 用户可以多次按格式化键而不会累积空格
+    - 无论格式化干净的 SQL 还是预格式化的 SQL，输出都一致
+    - 修复了报告的空格增长到 88+ 个空格的问题
+    - 不再出现逗号单独占一行的情况
+
 ## [0.3.6] - 2025-11-13
 
 ### 变更

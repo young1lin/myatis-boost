@@ -360,9 +360,42 @@ class MybatisCstFormatter {
     }
 
     private formatRoot(node: RootNode, depth: number, options: FormatOptionsWithLanguage): string {
-        return node.children
-            .map(child => this.formatNode(child, depth, options))
-            .join('');
+        return this.formatChildren(node.children, depth, options);
+    }
+
+    /**
+     * Format array of child nodes with proper spacing between SQL and Param nodes
+     * Ensures space exists between SQL operators/identifiers and MyBatis parameters
+     *
+     * @param children - Array of child nodes to format
+     * @param depth - Current indentation depth
+     * @param options - Formatting options
+     * @returns Formatted string with proper spacing
+     */
+    private formatChildren(children: CSTNode[], depth: number, options: FormatOptionsWithLanguage): string {
+        const formatted: string[] = [];
+
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            const formattedChild = this.formatNode(child, depth, options);
+
+            // Add space between SQL node and Param node if needed
+            // This ensures "id = #{id}" instead of "id =#{id}"
+            if (i > 0 && child.type === 'param') {
+                const prevChild = children[i - 1];
+                if (prevChild.type === 'sql' && formatted.length > 0) {
+                    const lastFormatted = formatted[formatted.length - 1];
+                    // Check if last character is not whitespace
+                    if (lastFormatted && !/\s$/.test(lastFormatted)) {
+                        formatted[formatted.length - 1] = lastFormatted + ' ';
+                    }
+                }
+            }
+
+            formatted.push(formattedChild);
+        }
+
+        return formatted.join('');
     }
 
     private formatTag(node: TagNode, depth: number, options: FormatOptionsWithLanguage): string {
@@ -379,10 +412,8 @@ class MybatisCstFormatter {
             return `\n${indent}<${tagName}${attrString}/>`;
         }
 
-        // Format children with increased depth
-        const childrenFormatted = node.children
-            .map(child => this.formatNode(child, depth + 1, options))
-            .join('');
+        // Format children with increased depth using helper method
+        const childrenFormatted = this.formatChildren(node.children, depth + 1, options);
 
         // Check if children contain only inline content (no nested tags)
         const hasNestedTags = node.children.some(child => child.type === 'tag');
@@ -405,9 +436,15 @@ class MybatisCstFormatter {
 
     private formatSql(node: SqlNode, depth: number, options: FormatOptionsWithLanguage): string {
         const indent = this.getIndent(depth, options.tabWidth || 4);
-        const sql = node.content.trim();
+        let sql = node.content.trim();
 
-        if (!sql) return '';
+        if (!sql) {
+            return '';
+        }
+
+        // Normalize indentation to prevent spacing accumulation on repeated formatting
+        // SQL content may contain indentation from previous formatting cycles
+        sql = this.normalizeSqlIndentation(sql);
 
         try {
             // Format SQL using sql-formatter
@@ -427,6 +464,30 @@ class MybatisCstFormatter {
             // If formatting fails, just indent the original content
             return `\n${indent}${sql}`;
         }
+    }
+
+    /**
+     * Normalize SQL indentation to prevent spacing accumulation
+     * Removes ALL leading spaces from each line to ensure clean input for sql-formatter
+     * sql-formatter will apply its own indentation rules based on SQL syntax
+     *
+     * @param sql - SQL content that may contain indentation
+     * @returns Normalized SQL with all leading spaces removed
+     */
+    private normalizeSqlIndentation(sql: string): string {
+        const lines = sql.split('\n');
+
+        // Remove ALL leading spaces from each line
+        // This ensures sql-formatter receives clean input without pre-existing indentation
+        // that could accumulate on repeated formatting
+        const normalized = lines.map(line => {
+            if (line.trim().length === 0) {
+                return '';
+            }
+            return line.trimStart();
+        });
+
+        return normalized.join('\n');
     }
 
     private formatParam(node: ParamNode): string {
@@ -538,7 +599,55 @@ export class MybatisSqlFormatter {
         // Remove trailing spaces on each line
         result = result.split('\n').map(line => line.trimEnd()).join('\n');
 
+        // Fix comma placement: move leading commas to end of previous line
+        result = this.postprocessCommas(result);
+
         return result;
+    }
+
+    /**
+     * Postprocess SQL to fix comma placement after formatting
+     * sql-formatter may create leading commas (commas at start of line)
+     * This method moves them to the end of the previous line (trailing commas)
+     *
+     * @param sql - Formatted SQL content
+     * @returns Postprocessed SQL with commas at end of lines instead of beginning
+     */
+    private postprocessCommas(sql: string): string {
+        const lines = sql.split('\n');
+        const result: string[] = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            // Check if this line starts with a comma (leading comma style)
+            if (trimmed.startsWith(',')) {
+                // Move comma to end of previous line
+                if (result.length > 0) {
+                    // Add comma to previous line if it doesn't already have one
+                    const lastLine = result[result.length - 1];
+                    if (!lastLine.trim().endsWith(',')) {
+                        result[result.length - 1] = lastLine + ',';
+                    }
+
+                    // Get rest of content after comma (if any)
+                    const restOfLine = trimmed.substring(1).trim();
+                    if (restOfLine.length > 0) {
+                        // Preserve indentation from original line
+                        const leadingSpaces = line.match(/^\s*/)?.[0] || '';
+                        result.push(leadingSpaces + restOfLine);
+                    }
+                } else {
+                    // Keep line as-is if there's no previous line
+                    result.push(line);
+                }
+            } else {
+                result.push(line);
+            }
+        }
+
+        return result.join('\n');
     }
 
     /**
