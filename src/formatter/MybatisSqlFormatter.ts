@@ -2,10 +2,10 @@
  * MyBatis SQL Formatter
  * Formats SQL content inside MyBatis statement tags while preserving dynamic SQL tags
  *
- * Strategy: Three-step formatting process
- * 1. Extract dynamic tags and replace with placeholders
- * 2. Format the cleaned SQL using sql-formatter library
- * 3. Restore dynamic tags from placeholders
+ * Strategy: CST-based formatting for proper nested tag indentation
+ * 1. Parse SQL and dynamic tags into CST (Concrete Syntax Tree)
+ * 2. Format SQL nodes using sql-formatter
+ * 3. Render CST back to text with proper indentation
  */
 
 import { format, FormatOptionsWithLanguage, SqlLanguage } from 'sql-formatter';
@@ -27,18 +27,420 @@ export interface FormatterOptions {
 }
 
 /**
- * Dynamic tag extraction result
+ * CST Node Types
  */
-interface TagExtractionResult {
-    /** SQL content with tags replaced by placeholders */
-    cleanedSql: string;
-    /** Map of placeholders to original tag content */
-    tagMap: Map<string, string>;
+interface CSTNode {
+    type: 'root' | 'tag' | 'sql' | 'param';
+    start: number;
+    end: number;
+}
+
+interface RootNode extends CSTNode {
+    type: 'root';
+    children: CSTNode[];
+}
+
+interface TagNode extends CSTNode {
+    type: 'tag';
+    tagName: string;
+    attributes: Map<string, string>;
+    selfClosing: boolean;
+    children: CSTNode[];
+}
+
+interface SqlNode extends CSTNode {
+    type: 'sql';
+    content: string;
+}
+
+interface ParamNode extends CSTNode {
+    type: 'param';
+    paramType: '#' | '$';
+    expression: string;
+}
+
+/**
+ * CST Parser for MyBatis SQL
+ */
+class MybatisSqlParser {
+    private input: string = '';
+    private position: number = 0;
+    private length: number = 0;
+    private dynamicTags: string[];
+
+    constructor(dynamicTags: string[]) {
+        this.dynamicTags = dynamicTags;
+    }
+
+    public parse(input: string): RootNode {
+        this.input = input;
+        this.position = 0;
+        this.length = input.length;
+
+        const children = this.parseNodes();
+
+        return {
+            type: 'root',
+            start: 0,
+            end: this.length,
+            children
+        };
+    }
+
+    private parseNodes(): CSTNode[] {
+        const nodes: CSTNode[] = [];
+
+        while (this.position < this.length) {
+            const char = this.input[this.position];
+
+            if (char === '<') {
+                if (this.peek(1) === '/') {
+                    break; // Closing tag
+                }
+
+                const tag = this.parseTag();
+                if (tag) {
+                    nodes.push(tag);
+                } else {
+                    const text = this.parseText();
+                    if (text) nodes.push(text);
+                }
+            } else if (char === '#' || char === '$') {
+                const param = this.parseParam();
+                if (param) {
+                    nodes.push(param);
+                } else {
+                    const text = this.parseText();
+                    if (text) nodes.push(text);
+                }
+            } else {
+                const text = this.parseText();
+                if (text) nodes.push(text);
+            }
+        }
+
+        return nodes;
+    }
+
+    private parseTag(): TagNode | null {
+        const start = this.position;
+
+        if (this.input[this.position] !== '<') {
+            return null;
+        }
+
+        this.position++; // Skip '<'
+
+        const tagName = this.parseTagName();
+        if (!tagName || !this.dynamicTags.includes(tagName.toLowerCase())) {
+            this.position = start;
+            return null;
+        }
+
+        const attributes = this.parseAttributes();
+
+        this.skipWhitespace();
+
+        // Self-closing tag
+        if (this.peek() === '/' && this.peek(1) === '>') {
+            this.position += 2;
+            return {
+                type: 'tag',
+                tagName,
+                attributes,
+                selfClosing: true,
+                children: [],
+                start,
+                end: this.position
+            };
+        }
+
+        // Opening tag
+        if (this.peek() === '>') {
+            this.position++;
+
+            const children = this.parseNodes();
+
+            // Closing tag
+            this.skipWhitespace();
+            if (this.peek() === '<' && this.peek(1) === '/') {
+                this.position += 2;
+                const closingTagName = this.parseTagName();
+
+                if (closingTagName.toLowerCase() !== tagName.toLowerCase()) {
+                    throw new Error(`Mismatched closing tag: expected </${tagName}>, got </${closingTagName}>`);
+                }
+
+                this.skipWhitespace();
+                if (this.peek() === '>') {
+                    this.position++;
+                }
+            }
+
+            return {
+                type: 'tag',
+                tagName,
+                attributes,
+                selfClosing: false,
+                children,
+                start,
+                end: this.position
+            };
+        }
+
+        this.position = start;
+        return null;
+    }
+
+    private parseTagName(): string {
+        this.skipWhitespace();
+        const start = this.position;
+
+        while (this.position < this.length) {
+            const char = this.input[this.position];
+            if (/[a-zA-Z0-9_-]/.test(char)) {
+                this.position++;
+            } else {
+                break;
+            }
+        }
+
+        return this.input.substring(start, this.position);
+    }
+
+    private parseAttributes(): Map<string, string> {
+        const attributes = new Map<string, string>();
+
+        while (this.position < this.length) {
+            this.skipWhitespace();
+
+            const char = this.peek();
+            if (char === '>' || char === '/') {
+                break;
+            }
+
+            // Parse attribute name
+            const nameStart = this.position;
+            while (this.position < this.length && /[a-zA-Z0-9_-]/.test(this.input[this.position])) {
+                this.position++;
+            }
+            const name = this.input.substring(nameStart, this.position);
+
+            if (!name) break;
+
+            this.skipWhitespace();
+
+            if (this.peek() !== '=') break;
+            this.position++;
+
+            this.skipWhitespace();
+
+            const quote = this.peek();
+            if (quote !== '"' && quote !== "'") break;
+            this.position++;
+
+            const valueStart = this.position;
+            while (this.position < this.length && this.input[this.position] !== quote) {
+                this.position++;
+            }
+            const value = this.input.substring(valueStart, this.position);
+
+            if (this.peek() === quote) {
+                this.position++;
+            }
+
+            attributes.set(name, value);
+        }
+
+        return attributes;
+    }
+
+    private parseParam(): ParamNode | null {
+        const start = this.position;
+        const paramType = this.input[this.position] as '#' | '$';
+
+        if ((paramType !== '#' && paramType !== '$') || this.peek(1) !== '{') {
+            return null;
+        }
+
+        this.position += 2; // Skip '#{' or '${'
+
+        let depth = 1;
+        const exprStart = this.position;
+
+        while (this.position < this.length && depth > 0) {
+            const char = this.input[this.position];
+            if (char === '{') depth++;
+            else if (char === '}') depth--;
+            this.position++;
+        }
+
+        const expression = this.input.substring(exprStart, this.position - 1);
+
+        return {
+            type: 'param',
+            paramType,
+            expression,
+            start,
+            end: this.position
+        };
+    }
+
+    private parseText(): SqlNode | null {
+        const start = this.position;
+        let content = '';
+
+        while (this.position < this.length) {
+            const char = this.input[this.position];
+
+            if (char === '<') {
+                if (this.peek(1) === '/') break; // Closing tag
+                // Check if it's a valid tag
+                const savedPos = this.position;
+                this.position++;
+                const tagName = this.parseTagName();
+                this.position = savedPos;
+                if (this.dynamicTags.includes(tagName.toLowerCase())) break;
+            }
+
+            if ((char === '#' || char === '$') && this.peek(1) === '{') {
+                break; // Parameter
+            }
+
+            content += char;
+            this.position++;
+        }
+
+        if (content.length === 0) return null;
+
+        return {
+            type: 'sql',
+            content,
+            start,
+            end: this.position
+        };
+    }
+
+    private peek(offset: number = 0): string {
+        const pos = this.position + offset;
+        return pos < this.length ? this.input[pos] : '';
+    }
+
+    private skipWhitespace(): void {
+        while (this.position < this.length && /\s/.test(this.input[this.position])) {
+            this.position++;
+        }
+    }
+}
+
+/**
+ * CST Formatter
+ */
+class MybatisCstFormatter {
+    /**
+     * Format CST to string
+     */
+    public format(root: RootNode, options: FormatOptionsWithLanguage): string {
+        return this.formatNode(root, 0, options);
+    }
+
+    private formatNode(node: CSTNode, depth: number, options: FormatOptionsWithLanguage): string {
+        switch (node.type) {
+            case 'root':
+                return this.formatRoot(node as RootNode, depth, options);
+            case 'tag':
+                return this.formatTag(node as TagNode, depth, options);
+            case 'sql':
+                return this.formatSql(node as SqlNode, depth, options);
+            case 'param':
+                return this.formatParam(node as ParamNode);
+            default:
+                return '';
+        }
+    }
+
+    private formatRoot(node: RootNode, depth: number, options: FormatOptionsWithLanguage): string {
+        return node.children
+            .map(child => this.formatNode(child, depth, options))
+            .join('');
+    }
+
+    private formatTag(node: TagNode, depth: number, options: FormatOptionsWithLanguage): string {
+        const indent = this.getIndent(depth, options.tabWidth || 4);
+        const tagName = node.tagName;
+
+        // Format attributes
+        const attrs = Array.from(node.attributes.entries())
+            .map(([key, value]) => `${key}="${value}"`)
+            .join(' ');
+        const attrString = attrs ? ' ' + attrs : '';
+
+        if (node.selfClosing) {
+            return `\n${indent}<${tagName}${attrString}/>`;
+        }
+
+        // Format children with increased depth
+        const childrenFormatted = node.children
+            .map(child => this.formatNode(child, depth + 1, options))
+            .join('');
+
+        // Check if children contain only inline content (no nested tags)
+        const hasNestedTags = node.children.some(child => child.type === 'tag');
+
+        if (hasNestedTags) {
+            // Multi-line format with nested tags - preserve all formatting including leading newlines
+            return `\n${indent}<${tagName}${attrString}>${childrenFormatted}\n${indent}</${tagName}>`;
+        } else {
+            // Format for content without nested tags
+            const trimmedChildren = childrenFormatted.trim();
+            if (trimmedChildren.length < 80) {
+                // Short inline content
+                return `\n${indent}<${tagName}${attrString}>\n${this.getIndent(depth + 1, options.tabWidth || 4)}${trimmedChildren}\n${indent}</${tagName}>`;
+            } else {
+                // Long content
+                return `\n${indent}<${tagName}${attrString}>${childrenFormatted}\n${indent}</${tagName}>`;
+            }
+        }
+    }
+
+    private formatSql(node: SqlNode, depth: number, options: FormatOptionsWithLanguage): string {
+        const indent = this.getIndent(depth, options.tabWidth || 4);
+        const sql = node.content.trim();
+
+        if (!sql) return '';
+
+        try {
+            // Format SQL using sql-formatter
+            const formatted = format(sql, options);
+
+            // Add indentation to each line
+            const lines = formatted.split('\n');
+            const indentedLines = lines.map((line, index) => {
+                if (index === 0) {
+                    return `\n${indent}${line}`;
+                }
+                return `${indent}${line}`;
+            });
+
+            return indentedLines.join('\n');
+        } catch (error) {
+            // If formatting fails, just indent the original content
+            return `\n${indent}${sql}`;
+        }
+    }
+
+    private formatParam(node: ParamNode): string {
+        return `${node.paramType}{${node.expression}}`;
+    }
+
+    private getIndent(depth: number, tabWidth: number): string {
+        return ' '.repeat(depth * tabWidth);
+    }
 }
 
 /**
  * MyBatis SQL Formatter
- * Handles SQL formatting with dynamic tag preservation using placeholder replacement strategy
+ * Handles SQL formatting with dynamic tag preservation using CST
  */
 export class MybatisSqlFormatter {
     /**
@@ -46,13 +448,8 @@ export class MybatisSqlFormatter {
      */
     private readonly DYNAMIC_TAGS = [
         'if', 'choose', 'when', 'otherwise', 'foreach',
-        'where', 'set', 'trim', 'bind', 'include'
+        'where', 'set', 'trim', 'bind', 'include', 'property'
     ];
-
-    /**
-     * Placeholder prefix for dynamic tags
-     */
-    private readonly PLACEHOLDER_PREFIX = '__MYBATIS_TAG_';
 
     /**
      * Default formatter options matching IDEA's default SQL formatting style
@@ -60,13 +457,24 @@ export class MybatisSqlFormatter {
     private readonly DEFAULT_OPTIONS: FormatOptionsWithLanguage = {
         language: 'mysql',
         keywordCase: 'upper',
-        tabWidth: 2,
+        tabWidth: 4,
         indentStyle: 'standard',
-        logicalOperatorNewline: 'before',  // AND/OR on new line before the condition
+        logicalOperatorNewline: 'before',
         denseOperators: false,
         newlineBeforeSemicolon: false,
         linesBetweenQueries: 1
     };
+
+    /**
+     * CST Parser and Formatter
+     */
+    private parser: MybatisSqlParser;
+    private cstFormatter: MybatisCstFormatter;
+
+    constructor() {
+        this.parser = new MybatisSqlParser(this.DYNAMIC_TAGS);
+        this.cstFormatter = new MybatisCstFormatter();
+    }
 
     /**
      * Format SQL content with dynamic tag preservation
@@ -81,251 +489,22 @@ export class MybatisSqlFormatter {
             return sqlContent;
         }
 
-        // Step 1: Extract and replace dynamic tags with placeholders
-        const { cleanedSql, tagMap } = this.extractDynamicTags(sqlContent);
-
-        // Step 2: Replace MyBatis parameters with ? placeholders for better formatting
-        const { sql: sqlWithPlaceholders, paramMap } = this.replaceMyBatisParams(cleanedSql);
-
-        // Step 3: Format the cleaned SQL using sql-formatter
-        const formatterOptions = this.buildFormatterOptions(options);
-        let formatted: string;
-
         try {
-            formatted = format(sqlWithPlaceholders, formatterOptions);
+            // Build formatter options
+            const formatterOptions = this.buildFormatterOptions(options);
+
+            // Step 1: Parse SQL content into CST
+            const cst = this.parser.parse(sqlContent);
+
+            // Step 2: Format CST to string with proper indentation
+            const formatted = this.cstFormatter.format(cst, formatterOptions);
+
+            // Step 3: Clean up formatting
+            return this.cleanupFormatting(formatted);
         } catch (error) {
             // If formatting fails, return original content
             console.error('[MyBatis SQL Formatter] Failed to format SQL:', error);
             return sqlContent;
-        }
-
-        // Step 4: Restore MyBatis parameters
-        const sqlWithParams = this.restoreMyBatisParams(formatted, paramMap);
-
-        // Step 5: Restore dynamic tags from placeholders
-        const result = this.restoreDynamicTags(sqlWithParams, tagMap);
-
-        return result;
-    }
-
-    /**
-     * Extract dynamic tags and replace with placeholders
-     * Uses recursive approach to handle nested tags from innermost to outermost
-     *
-     * @param sqlContent - Original SQL content
-     * @returns Cleaned SQL and tag mapping
-     */
-    private extractDynamicTags(sqlContent: string): TagExtractionResult {
-        const tagMap = new Map<string, string>();
-        let placeholderIndex = 0;
-        let cleanedSql = sqlContent;
-
-        // Build regex pattern for all dynamic tags
-        const tagPattern = this.buildTagPattern();
-
-        // Keep replacing until no more tags found (handles nested tags)
-        let hasMoreTags = true;
-        while (hasMoreTags) {
-            const match = cleanedSql.match(tagPattern);
-
-            if (!match) {
-                hasMoreTags = false;
-                break;
-            }
-
-            const fullTag = match[0];
-            const placeholder = `${this.PLACEHOLDER_PREFIX}${placeholderIndex}__`;
-
-            // Store the mapping
-            tagMap.set(placeholder, fullTag);
-
-            // Replace the tag with placeholder
-            cleanedSql = cleanedSql.replace(fullTag, placeholder);
-
-            placeholderIndex++;
-        }
-
-        return { cleanedSql, tagMap };
-    }
-
-    /**
-     * Build regex pattern to match dynamic tags
-     * Matches self-closing and paired tags with content
-     *
-     * @returns Regex pattern for matching dynamic tags
-     */
-    private buildTagPattern(): RegExp {
-        const tagNames = this.DYNAMIC_TAGS.join('|');
-
-        // Match both self-closing tags and paired tags with content
-        // Example: <include refid="xxx"/> or <if test="xxx">content</if>
-        const pattern = `<(${tagNames})(?:\\s+[^>]*)?(?:/>|>.*?</\\1>)`;
-
-        return new RegExp(pattern, 'is'); // 'i' for case-insensitive, 's' for dotAll mode
-    }
-
-    /**
-     * Replace MyBatis parameters with ? placeholders
-     * This helps sql-formatter recognize the SQL structure correctly and apply proper formatting
-     *
-     * @param sql - SQL content with MyBatis parameters
-     * @returns SQL with ? placeholders and parameter mapping
-     */
-    private replaceMyBatisParams(sql: string): { sql: string; paramMap: Map<string, string> } {
-        const paramMap = new Map<string, string>();
-        let paramIndex = 0;
-        let result = sql;
-
-        // Replace #{param} with numbered placeholders
-        result = result.replace(/#\{[^}]+\}/g, (match) => {
-            const placeholder = `__PARAM_${paramIndex}__`;
-            paramMap.set(placeholder, match);
-            paramIndex++;
-            return '?';
-        });
-
-        // Replace ${param} with numbered placeholders
-        result = result.replace(/\$\{[^}]+\}/g, (match) => {
-            const placeholder = `__PARAM_${paramIndex}__`;
-            paramMap.set(placeholder, match);
-            paramIndex++;
-            return '?';
-        });
-
-        return { sql: result, paramMap };
-    }
-
-    /**
-     * Restore MyBatis parameters from ? placeholders
-     * Replaces ? back to original MyBatis parameters in order
-     *
-     * @param sql - SQL content with ? placeholders
-     * @param paramMap - Map of placeholders to original parameters
-     * @returns SQL with restored MyBatis parameters
-     */
-    private restoreMyBatisParams(sql: string, paramMap: Map<string, string>): string {
-        let result = sql;
-        let paramIndex = 0;
-
-        // Replace ? with original MyBatis parameters in order
-        result = result.replace(/\?/g, () => {
-            const placeholder = `__PARAM_${paramIndex}__`;
-            const originalParam = paramMap.get(placeholder);
-            paramIndex++;
-            return originalParam || '?';
-        });
-
-        return result;
-    }
-
-    /**
-     * Restore dynamic tags from placeholders
-     * Adds proper indentation to tag content based on Style A (extra indentation inside tags)
-     *
-     * @param formattedSql - Formatted SQL with placeholders
-     * @param tagMap - Map of placeholders to original tag content
-     * @returns SQL with restored dynamic tags
-     */
-    private restoreDynamicTags(formattedSql: string, tagMap: Map<string, string>): string {
-        let result = formattedSql;
-
-        // Replace each placeholder with its original tag
-        for (const [placeholder, originalTag] of tagMap) {
-            // Find the placeholder in the formatted SQL to get its indentation
-            const lines = result.split('\n');
-            let placeholderLineIndex = -1;
-            let placeholderIndent = '';
-            let isPlaceholderAloneOnLine = false;
-
-            // Find the line containing the placeholder
-            for (let i = 0; i < lines.length; i++) {
-                if (lines[i].includes(placeholder)) {
-                    placeholderLineIndex = i;
-                    const line = lines[i];
-
-                    // Extract the indentation before the placeholder
-                    const lineBeforePlaceholder = line.substring(0, line.indexOf(placeholder));
-                    placeholderIndent = lineBeforePlaceholder.match(/^\s*/)?.[0] || '';
-
-                    // Check if placeholder is alone on the line (only whitespace before and after)
-                    const lineAfterPlaceholder = line.substring(line.indexOf(placeholder) + placeholder.length);
-                    isPlaceholderAloneOnLine = lineBeforePlaceholder.trim() === '' && lineAfterPlaceholder.trim() === '';
-
-                    break;
-                }
-            }
-
-            // Format the tag with proper indentation (Style A: extra indent inside tags)
-            const formattedTag = this.formatDynamicTag(originalTag, placeholderIndent, isPlaceholderAloneOnLine);
-
-            // Replace the placeholder with the formatted tag
-            result = result.replace(placeholder, formattedTag);
-        }
-
-        return result;
-    }
-
-    /**
-     * Format a dynamic tag with proper indentation
-     * Applies Style A: content inside dynamic tags gets extra indentation
-     *
-     * @param tagContent - Original tag content
-     * @param baseIndent - Base indentation from the placeholder position
-     * @param isAloneOnLine - Whether the placeholder was alone on its line
-     * @returns Formatted tag with proper indentation
-     */
-    private formatDynamicTag(tagContent: string, baseIndent: string, isAloneOnLine: boolean = false): string {
-        // Parse the tag to extract tag name, attributes, and inner content
-        const selfClosingMatch = tagContent.match(/^<(\w+)([^>]*)\/>$/);
-
-        if (selfClosingMatch) {
-            // Self-closing tag (e.g., <include refid="xxx"/>)
-            // If placeholder was alone on line, don't add leading newline (already on new line)
-            if (isAloneOnLine) {
-                return `${baseIndent}${tagContent}`;
-            }
-            return `\n${baseIndent}${tagContent}`;
-        }
-
-        // Paired tag with content (e.g., <if test="xxx">AND name = #{name}</if>)
-        const pairedTagMatch = tagContent.match(/^<(\w+)([^>]*)>(.*)<\/\1>$/s);
-
-        if (!pairedTagMatch) {
-            // Invalid tag format, return as-is
-            return tagContent;
-        }
-
-        const tagName = pairedTagMatch[1];
-        const attributes = pairedTagMatch[2];
-        const innerContent = pairedTagMatch[3];
-
-        // Calculate extra indentation for content inside the tag (2 spaces for IDEA style)
-        const extraIndent = '  ';
-        const contentIndent = baseIndent + extraIndent;
-
-        // Trim and indent the inner content
-        const trimmedContent = innerContent.trim();
-
-        // Check if content is multi-line
-        if (trimmedContent.includes('\n')) {
-            // Multi-line content: indent each line
-            const indentedLines = trimmedContent.split('\n').map(line => {
-                const trimmedLine = line.trim();
-                return trimmedLine ? `${contentIndent}${trimmedLine}` : '';
-            });
-
-            // If placeholder was alone on line, don't add leading newline
-            if (isAloneOnLine) {
-                return `${baseIndent}<${tagName}${attributes}>\n${indentedLines.join('\n')}\n${baseIndent}</${tagName}>`;
-            }
-            return `\n${baseIndent}<${tagName}${attributes}>\n${indentedLines.join('\n')}\n${baseIndent}</${tagName}>`;
-        } else {
-            // Single-line content: add on new line with indentation
-            // If placeholder was alone on line, don't add leading newline
-            if (isAloneOnLine) {
-                return `${baseIndent}<${tagName}${attributes}>\n${contentIndent}${trimmedContent}\n${baseIndent}</${tagName}>`;
-            }
-            return `\n${baseIndent}<${tagName}${attributes}>\n${contentIndent}${trimmedContent}\n${baseIndent}</${tagName}>`;
         }
     }
 
@@ -344,6 +523,22 @@ export class MybatisSqlFormatter {
             ...(options?.indentStyle && { indentStyle: options.indentStyle }),
             ...(options?.denseOperators !== undefined && { denseOperators: options.denseOperators })
         };
+    }
+
+    /**
+     * Clean up formatting (remove excessive blank lines, trim, etc.)
+     */
+    private cleanupFormatting(formatted: string): string {
+        // Remove leading/trailing whitespace
+        let result = formatted.trim();
+
+        // Replace multiple consecutive blank lines with single blank line
+        result = result.replace(/\n\s*\n\s*\n/g, '\n\n');
+
+        // Remove trailing spaces on each line
+        result = result.split('\n').map(line => line.trimEnd()).join('\n');
+
+        return result;
     }
 
     /**
@@ -382,5 +577,47 @@ export class MybatisSqlFormatter {
 
         // Default to MySQL (most common)
         return 'mysql';
+    }
+
+    /**
+     * Debug: Print CST structure for debugging
+     */
+    public debugPrintCst(sqlContent: string): string {
+        const cst = this.parser.parse(sqlContent);
+        return this.printNode(cst, 0);
+    }
+
+    private printNode(node: CSTNode, depth: number): string {
+        const indent = '  '.repeat(depth);
+        let result = '';
+
+        switch (node.type) {
+            case 'root':
+                result += `${indent}Root\n`;
+                for (const child of (node as RootNode).children) {
+                    result += this.printNode(child, depth + 1);
+                }
+                break;
+            case 'tag':
+                const tag = node as TagNode;
+                result += `${indent}Tag: <${tag.tagName}> (selfClosing: ${tag.selfClosing})\n`;
+                if (tag.attributes.size > 0) {
+                    result += `${indent}  Attributes: ${JSON.stringify(Array.from(tag.attributes.entries()))}\n`;
+                }
+                for (const child of tag.children) {
+                    result += this.printNode(child, depth + 1);
+                }
+                break;
+            case 'sql':
+                const sql = (node as SqlNode).content.trim().substring(0, 50);
+                result += `${indent}SQL: "${sql}${sql.length === 50 ? '...' : ''}"\n`;
+                break;
+            case 'param':
+                const param = node as ParamNode;
+                result += `${indent}Param: ${param.paramType}{${param.expression}}\n`;
+                break;
+        }
+
+        return result;
     }
 }

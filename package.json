@@ -2,7 +2,7 @@
   "name": "mybatis-boost",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "publisher": "young1lin",
   "license": "MIT",
   "packageManager": "pnpm@10.19.0",
@@ -268,10 +268,10 @@
         },
         "mybatis-boost.formatter.tabWidth": {
           "type": "number",
-          "default": 2,
+          "default": 4,
           "minimum": 1,
           "maximum": 8,
-          "description": "Indentation width for SQL formatting (IDEA default: 2)"
+          "description": "Indentation width for SQL formatting (default: 4 spaces)"
         },
         "mybatis-boost.formatter.indentStyle": {
           "type": "string",

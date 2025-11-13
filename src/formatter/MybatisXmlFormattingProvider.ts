@@ -221,19 +221,41 @@ export class MybatisXmlFormattingProvider implements vscode.DocumentFormattingEd
         // Split formatted content into lines
         const lines = formatted.split('\n');
 
-        // Indent each line
+        // Find minimum indentation as baseline to preserve relative indentation
+        let minIndent = Infinity;
+        for (const line of lines) {
+            if (line.trim().length > 0) {
+                const leadingSpaces = line.match(/^\s*/)?.[0].length || 0;
+                minIndent = Math.min(minIndent, leadingSpaces);
+            }
+        }
+
+        if (minIndent === Infinity) {
+            minIndent = 0;
+        }
+
+        // Remove baseline indentation, preserve relative indentation, add target indentation
         const indentedLines = lines.map(line => {
-            const trimmedLine = line.trim();
-            if (trimmedLine.length === 0) {
+            if (line.trim().length === 0) {
                 return '';
             }
-            return contentIndent + trimmedLine;
+
+            // Remove baseline indentation, keep relative indentation
+            const relativeIndent = line.substring(minIndent);
+
+            // Add target indentation
+            return contentIndent + relativeIndent;
         });
 
         // Build final content: newline + indented SQL + newline + closing tag indent
         // Example:
         // <select id="xxx">
         //   SELECT * FROM user
+        //   <where>
+        //     <if test="name != null">
+        //       AND name = #{name}
+        //     </if>
+        //   </where>
         // </select>
         return '\n' + indentedLines.join('\n') + '\n' + baseIndent;
     }
