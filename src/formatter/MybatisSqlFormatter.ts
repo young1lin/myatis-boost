@@ -437,33 +437,23 @@ class MybatisCstFormatter {
 
     /**
      * Normalize SQL indentation to prevent spacing accumulation
-     * Removes baseline indentation while preserving relative indentation
+     * Removes ALL leading spaces from each line to ensure clean input for sql-formatter
+     * sql-formatter will apply its own indentation rules based on SQL syntax
      *
      * @param sql - SQL content that may contain indentation
-     * @returns Normalized SQL with baseline indentation removed
+     * @returns Normalized SQL with all leading spaces removed
      */
     private normalizeSqlIndentation(sql: string): string {
         const lines = sql.split('\n');
 
-        // Find minimum indentation across all non-empty lines
-        let minIndent = Infinity;
-        for (const line of lines) {
-            if (line.trim().length > 0) {
-                const leadingSpaces = line.match(/^\s*/)?.[0].length || 0;
-                minIndent = Math.min(minIndent, leadingSpaces);
-            }
-        }
-
-        if (minIndent === Infinity || minIndent === 0) {
-            return sql;
-        }
-
-        // Remove baseline indentation from all lines
+        // Remove ALL leading spaces from each line
+        // This ensures sql-formatter receives clean input without pre-existing indentation
+        // that could accumulate on repeated formatting
         const normalized = lines.map(line => {
             if (line.trim().length === 0) {
                 return '';
             }
-            return line.substring(minIndent);
+            return line.trimStart();
         });
 
         return normalized.join('\n');
