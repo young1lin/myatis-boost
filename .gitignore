@@ -5,3 +5,7 @@ node_modules
 *.vsix
 
 **/target/
+
+# Test generated files
+src/test/unit/generator/generated-samples/
+src/output/
