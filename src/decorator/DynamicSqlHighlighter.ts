@@ -15,7 +15,7 @@ const SQL_KEYWORDS = [
     'ORDER', 'BY', 'GROUP', 'HAVING', 'LIMIT', 'OFFSET',
     'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'VALUES', 'INTO',
     'AS', 'DISTINCT', 'EXISTS', 'CASE', 'WHEN', 'THEN', 'ELSE', 'END',
-    'ASC', 'DESC', 'UNION', 'ALL', 'ANY', 'SOME'
+    'ASC', 'DESC', 'UNION', 'ALL', 'ANY', 'SOME', 'FOR'
 ];
 
 /**
@@ -189,6 +189,11 @@ export class DynamicSqlHighlighter {
                     continue;
                 }
 
+                // Skip if inside XML tag attributes (e.g., test="category != null")
+                if (this.isInsideXmlTag(content, match.index)) {
+                    continue;
+                }
+
                 decorations.push({
                     range: new vscode.Range(startPos, endPos)
                 });
@@ -228,6 +233,22 @@ export class DynamicSqlHighlighter {
         }
 
         return inExpression;
+    }
+
+    /**
+     * Check if position is inside XML tag (including attributes)
+     * Made public for testing purposes
+     */
+    public isInsideXmlTag(content: string, position: number): boolean {
+        // Find the content before this position
+        const beforeContent = content.substring(0, position);
+
+        // Find the last < and > before this position
+        const lastOpenBracket = beforeContent.lastIndexOf('<');
+        const lastCloseBracket = beforeContent.lastIndexOf('>');
+
+        // If the last < is after the last >, we're inside a tag (including attributes)
+        return lastOpenBracket > lastCloseBracket;
     }
 
     /**

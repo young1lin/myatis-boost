@@ -432,6 +432,163 @@ describe('DynamicSqlHighlighter Unit Tests', () => {
             assert.ok(hasOr, 'Should find "Or" keyword');
         });
     });
+
+    describe('FOR UPDATE Keyword Support', () => {
+        it('should highlight both FOR and UPDATE in FOR UPDATE clause', async () => {
+            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.mapper.AccountMapper">
+    <select id="getByAccountNumber" resultType="Account">
+        SELECT * FROM account
+        WHERE account_number = #{accountNumber}
+        FOR UPDATE
+    </select>
+</mapper>`;
+
+            const doc = await createMockDocument('test.xml', xmlContent);
+            const decorations = (highlighter as any).findSqlKeywords(doc);
+
+            // Should find both "FOR" and "UPDATE" keywords
+            const hasFor = decorations.some((d: any) => doc.getText(d.range) === 'FOR');
+            const hasUpdate = decorations.some((d: any) => doc.getText(d.range) === 'UPDATE');
+
+            assert.ok(hasFor, 'Should find "FOR" keyword in FOR UPDATE clause');
+            assert.ok(hasUpdate, 'Should find "UPDATE" keyword in FOR UPDATE clause');
+        });
+
+        it('should highlight FOR keyword in other contexts', async () => {
+            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.mapper.TestMapper">
+    <select id="testFor">
+        SELECT * FROM users
+        WHERE id IN (SELECT id FROM accounts FOR UPDATE)
+    </select>
+</mapper>`;
+
+            const doc = await createMockDocument('test.xml', xmlContent);
+            const decorations = (highlighter as any).findSqlKeywords(doc);
+
+            // Should find "FOR" keyword
+            const forKeywords = decorations.filter((d: any) => doc.getText(d.range) === 'FOR');
+            assert.ok(forKeywords.length >= 1, 'Should find "FOR" keyword');
+        });
+    });
+
+    describe('XML Tag Attribute Exclusion', () => {
+        it('should NOT highlight "null" inside test attribute', async () => {
+            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.mapper.CategoryMapper">
+    <select id="selectByCategory">
+        SELECT * FROM products
+        <if test="category != null">
+            WHERE category = #{category}
+        </if>
+    </select>
+</mapper>`;
+
+            const doc = await createMockDocument('test.xml', xmlContent);
+            const decorations = (highlighter as any).findSqlKeywords(doc);
+
+            // Should find "SELECT", "FROM", "WHERE" but NOT "null" in test attribute
+            const hasSelect = decorations.some((d: any) => doc.getText(d.range) === 'SELECT');
+            const hasFrom = decorations.some((d: any) => doc.getText(d.range) === 'FROM');
+            const hasWhere = decorations.some((d: any) => doc.getText(d.range) === 'WHERE');
+
+            assert.ok(hasSelect, 'Should find "SELECT" keyword');
+            assert.ok(hasFrom, 'Should find "FROM" keyword');
+            assert.ok(hasWhere, 'Should find "WHERE" keyword');
+
+            // Check that "null" in test attribute is not highlighted
+            const nullInAttribute = decorations.filter((d: any) => {
+                const text = doc.getText(d.range).toLowerCase();
+                const offset = doc.offsetAt(d.range.start);
+                const beforeText = doc.getText().substring(0, offset);
+
+                // Check if this is inside test="..." attribute
+                const lastOpenTag = beforeText.lastIndexOf('<if');
+                const lastCloseTag = beforeText.lastIndexOf('>');
+
+                return text === 'null' && lastOpenTag > lastCloseTag;
+            });
+
+            assert.strictEqual(nullInAttribute.length, 0, 'Should NOT highlight "null" inside test attribute');
+        });
+
+        it('should NOT highlight "and"/"or" inside test attributes', async () => {
+            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.mapper.UserMapper">
+    <select id="selectUsers">
+        SELECT * FROM users
+        <if test="name != null and age != null or status = 'active'">
+            WHERE name = #{name} AND age = #{age}
+        </if>
+    </select>
+</mapper>`;
+
+            const doc = await createMockDocument('test.xml', xmlContent);
+            const decorations = (highlighter as any).findSqlKeywords(doc);
+
+            // Should find "AND" in SQL content
+            const andInSql = decorations.filter((d: any) => {
+                const text = doc.getText(d.range);
+                const offset = doc.offsetAt(d.range.start);
+                const fullText = doc.getText();
+
+                // Check if this is after the closing > of the <if> tag
+                const ifTagEnd = fullText.indexOf('>', fullText.indexOf('<if'));
+                return text === 'AND' && offset > ifTagEnd;
+            });
+
+            assert.ok(andInSql.length >= 1, 'Should find "AND" keyword in SQL content');
+
+            // The "and"/"or" in test attribute should not be highlighted
+            // We can verify this by checking the total count
+            const allAnd = decorations.filter((d: any) => doc.getText(d.range).toUpperCase() === 'AND');
+            const allOr = decorations.filter((d: any) => doc.getText(d.range).toUpperCase() === 'OR');
+
+            // Should only find AND in SQL (not in test attribute)
+            assert.strictEqual(allAnd.length, 1, 'Should only find one "AND" (in SQL, not in test attribute)');
+            // Should not find OR anywhere (it's only in test attribute)
+            assert.strictEqual(allOr.length, 0, 'Should NOT find "or" in test attribute');
+        });
+
+        it('should highlight keywords in SQL but not in other tag attributes', async () => {
+            const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<mapper namespace="com.example.mapper.OrderMapper">
+    <select id="selectOrders" resultType="Order">
+        SELECT * FROM orders
+        <where>
+            <if test="status != null">
+                status = #{status}
+            </if>
+            <if test="date != null">
+                AND order_date = #{date}
+            </if>
+        </where>
+        ORDER BY id
+    </select>
+</mapper>`;
+
+            const doc = await createMockDocument('test.xml', xmlContent);
+            const decorations = (highlighter as any).findSqlKeywords(doc);
+
+            // Should find "SELECT", "FROM", "AND", "ORDER", "BY" in SQL
+            const hasSelect = decorations.some((d: any) => doc.getText(d.range) === 'SELECT');
+            const hasFrom = decorations.some((d: any) => doc.getText(d.range) === 'FROM');
+            const hasAnd = decorations.some((d: any) => doc.getText(d.range) === 'AND');
+            const hasOrder = decorations.some((d: any) => doc.getText(d.range) === 'ORDER');
+            const hasBy = decorations.some((d: any) => doc.getText(d.range) === 'BY');
+
+            assert.ok(hasSelect, 'Should find "SELECT" keyword');
+            assert.ok(hasFrom, 'Should find "FROM" keyword');
+            assert.ok(hasAnd, 'Should find "AND" keyword in SQL');
+            assert.ok(hasOrder, 'Should find "ORDER" keyword');
+            assert.ok(hasBy, 'Should find "BY" keyword');
+
+            // Should not find "null" in test attributes
+            const nullKeywords = decorations.filter((d: any) => doc.getText(d.range).toLowerCase() === 'null');
+            assert.strictEqual(nullKeywords.length, 0, 'Should NOT highlight "null" in test attributes');
+        });
+    });
 });
 
 /**
