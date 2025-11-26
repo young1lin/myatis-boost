@@ -40,6 +40,13 @@
           "title": "MyBatis Generator",
           "icon": "images/icons/MyBatis.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "mybatis-log-panel",
+          "title": "MyBatis Log",
+          "icon": "images/icons/MyBatis.svg"
+        }
       ]
     },
     "views": {
@@ -47,6 +54,13 @@
         {
           "id": "mybatis-boost.generatorView",
           "name": "Code Generator",
+          "type": "webview"
+        }
+      ],
+      "mybatis-log-panel": [
+        {
+          "id": "mybatis-boost.logView",
+          "name": "SQL Logs",
           "type": "webview"
         }
       ]
