@@ -103,7 +103,7 @@ class MybatisSqlParser {
                     nodes.push(tag);
                 } else {
                     const text = this.parseText();
-                    if (text) nodes.push(text);
+                    if (text) { nodes.push(text); }
                 }
             } else if (char === '#' || char === '$') {
                 const param = this.parseParam();
@@ -111,11 +111,11 @@ class MybatisSqlParser {
                     nodes.push(param);
                 } else {
                     const text = this.parseText();
-                    if (text) nodes.push(text);
+                    if (text) { nodes.push(text); }
                 }
             } else {
                 const text = this.parseText();
-                if (text) nodes.push(text);
+                if (text) { nodes.push(text); }
             }
         }
 
@@ -226,17 +226,17 @@ class MybatisSqlParser {
             }
             const name = this.input.substring(nameStart, this.position);
 
-            if (!name) break;
+            if (!name) { break; };
 
             this.skipWhitespace();
 
-            if (this.peek() !== '=') break;
+            if (this.peek() !== '=') { break; };
             this.position++;
 
             this.skipWhitespace();
 
             const quote = this.peek();
-            if (quote !== '"' && quote !== "'") break;
+            if (quote !== '"' && quote !== "'") { break; };
             this.position++;
 
             const valueStart = this.position;
@@ -270,8 +270,12 @@ class MybatisSqlParser {
 
         while (this.position < this.length && depth > 0) {
             const char = this.input[this.position];
-            if (char === '{') depth++;
-            else if (char === '}') depth--;
+            if (char === '{') {
+                depth++;
+            }
+            else if (char === '}') {
+                depth--;
+            };
             this.position++;
         }
 
@@ -294,13 +298,13 @@ class MybatisSqlParser {
             const char = this.input[this.position];
 
             if (char === '<') {
-                if (this.peek(1) === '/') break; // Closing tag
+                if (this.peek(1) === '/') { break; } // Closing tag
                 // Check if it's a valid tag
                 const savedPos = this.position;
                 this.position++;
                 const tagName = this.parseTagName();
                 this.position = savedPos;
-                if (this.dynamicTags.includes(tagName.toLowerCase())) break;
+                if (this.dynamicTags.includes(tagName.toLowerCase())) { break; };
             }
 
             if ((char === '#' || char === '$') && this.peek(1) === '{') {
@@ -311,7 +315,7 @@ class MybatisSqlParser {
             this.position++;
         }
 
-        if (content.length === 0) return null;
+        if (content.length === 0) { return null; };
 
         return {
             type: 'sql',
