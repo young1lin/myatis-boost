@@ -578,6 +578,26 @@ Contributions are welcome! Please ensure:
 
 MIT
 
+## Packaging
+
+To package the extension as a `.vsix` file for manual installation:
+
+```bash
+# Install dependencies (if not already installed)
+pnpm install
+
+# Compile the extension
+pnpm run compile
+
+# Install vsce globally (if not already installed)
+pnpm add -g @vscode/vsce
+
+# Package the extension
+vsce package --no-dependencies
+```
+
+This will generate a `.vsix` file (e.g., `mybatis-boost-0.3.10.vsix`) in the project root directory. You can then install it manually in VS Code by right-clicking the file and selecting "Install Extension VSIX".
+
 ## Changelog
 
 See [CHANGELOG.md](CHANGELOG.md) for detailed version history.

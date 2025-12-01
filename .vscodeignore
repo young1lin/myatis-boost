@@ -1,16 +1,56 @@
+# Development directories
 .vscode/**
 .vscode-test/**
 out/**
 node_modules/**
 src/**
+java-project/**
+docs/**
+
+# Git and version control
+.git/**
+.github/**
 .gitignore
-.yarnrc
-esbuild.js
+.gitattributes
+
+# Documentation (keep README.md and CHANGELOG.md)
+CLAUDE.md
 vsc-extension-quickstart.md
+
+# Build and configuration files
+esbuild.js
+tsconfig.json
 **/tsconfig.json
+eslint.config.mjs
 **/eslint.config.mjs
+.yarnrc
+.prettierrc
+.editorconfig
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+**/test/**
+**/.vscode-test.*
+
+# Source maps and TypeScript
 **/*.map
 **/*.ts
-**/.vscode-test.*
+
+# Demo assets
 images/demo.gif
 images/mcp.gif
+
+# IDE and editor
+.idea/**
+.settings/**
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

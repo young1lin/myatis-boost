@@ -13,6 +13,8 @@ export class MybatisLogViewProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private _records: SqlRecord[] = [];
     private _nextId = 1;
+    // Track current filter keyword to maintain filter state when new records are added
+    private _currentFilter: string | null = null;
 
     constructor(private readonly _extensionUri: vscode.Uri) {}
 
@@ -44,8 +46,10 @@ export class MybatisLogViewProvider implements vscode.WebviewViewProvider {
                     this._filterRecords(data.keyword);
                     break;
                 case 'clear':
+                    // Clear records but keep filter state
                     this._records = [];
                     this._nextId = 1;
+                    // Filter will be automatically applied to new incoming records
                     this._updateView();
                     break;
             }
@@ -72,11 +76,13 @@ export class MybatisLogViewProvider implements vscode.WebviewViewProvider {
     }
 
     /**
-     * Clear all records
+     * Clear all records but keep filter state
+     * Filter will be automatically applied to new incoming records
      */
     public clear(): void {
         this._records = [];
         this._nextId = 1;
+        // Keep filter state so it applies to new records
         this._updateView();
     }
 
@@ -173,21 +179,40 @@ export class MybatisLogViewProvider implements vscode.WebviewViewProvider {
 
     /**
      * Update webview with current records
+     * Applies current filter if one is active
      */
     private _updateView(): void {
         if (this._view) {
+            // Apply current filter if exists, otherwise show all records
+            let recordsToSend = this._records;
+
+            if (this._currentFilter !== null) {
+                const lowerKeyword = this._currentFilter.toLowerCase();
+                recordsToSend = this._records.filter(r =>
+                    r.mapper.toLowerCase().includes(lowerKeyword) ||
+                    r.sql.toLowerCase().includes(lowerKeyword)
+                );
+            }
+
             this._view.webview.postMessage({
                 type: 'update',
-                records: this._records
+                records: recordsToSend
             });
         }
     }
 
     /**
      * Filter records by keyword (searches mapper and SQL content)
+     * Saves the filter keyword to maintain filter state when new records are added
      */
     private _filterRecords(keyword: string): void {
-        const lowerKeyword = keyword.toLowerCase();
+        // Trim keyword to handle whitespace-only input
+        const trimmedKeyword = keyword.trim();
+
+        // Save current filter keyword (null if empty to clear filter)
+        this._currentFilter = trimmedKeyword === '' ? null : trimmedKeyword;
+
+        const lowerKeyword = trimmedKeyword.toLowerCase();
         const filtered = this._records.filter(r =>
             r.mapper.toLowerCase().includes(lowerKeyword) ||
             r.sql.toLowerCase().includes(lowerKeyword)
@@ -437,10 +462,10 @@ export class MybatisLogViewProvider implements vscode.WebviewViewProvider {
             vscode.postMessage({ type: 'filter', keyword: keyword });
         });
 
-        // Clear button handler (removed confirm to fix the issue)
+        // Clear button handler - keeps filter input to maintain filter state
         function clearAll() {
             vscode.postMessage({ type: 'clear' });
-            document.getElementById('filter').value = '';
+            // Keep filter input value - filter will be applied to new incoming records
         }
 
         // Toggle auto-scroll
